@@ -1,0 +1,4 @@
+.display { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--color-purple); letter-spacing: 0.02em; }
+.lg { font-size: 3.5rem; }
+.md { font-size: 1.75rem; }
+.sm { font-size: 1.125rem; }

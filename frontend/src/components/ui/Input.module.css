@@ -1,0 +1,16 @@
+.wrapper { display: flex; flex-direction: column; gap: 5px; }
+.label { font-size: 0.8125rem; font-weight: 600; color: var(--color-text); }
+.input {
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  transition: border-color 0.15s;
+  outline: none;
+  width: 100%;
+}
+.input:focus { border-color: var(--color-purple); }
+.input.error { border-color: var(--color-error); }
+.errorMsg { font-size: 0.75rem; color: var(--color-error); }

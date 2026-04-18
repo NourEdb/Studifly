@@ -1,0 +1,6 @@
+.title { margin-bottom: 14px; }
+.counts { display: flex; gap: 20px; margin-top: 16px; }
+.count { text-align: center; }
+.count span { font-size: 1.375rem; font-weight: 700; color: var(--color-text); }
+.count p { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 2px; }
+.overdue span { color: var(--color-error); }

@@ -1,0 +1,24 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0ecfd 0%, #e8f4fc 50%, #fde8f3 100%);
+  padding: 24px;
+}
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+}
+.logo { text-align: center; margin-bottom: 24px; }
+.logo img { width: 90px; height: auto; }
+.tagline { font-size: 0.8125rem; color: var(--color-blue); font-weight: 500; margin-top: 6px; }
+.title { font-size: 1.375rem; font-weight: 700; margin-bottom: 24px; text-align: center; }
+.form { display: flex; flex-direction: column; gap: 16px; }
+.footer { text-align: center; margin-top: 20px; font-size: 0.875rem; color: var(--color-text-muted); }
+.footer a { color: var(--color-purple); font-weight: 600; }
+.footer a:hover { text-decoration: underline; }

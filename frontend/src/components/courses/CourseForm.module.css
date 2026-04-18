@@ -1,0 +1,11 @@
+.form { display: flex; flex-direction: column; gap: 18px; }
+.colorLabel { font-size: 0.8125rem; font-weight: 600; margin-bottom: 8px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 28px; height: 28px;
+  border-radius: 50%; border: 3px solid transparent;
+  transition: transform 0.1s, border-color 0.1s;
+}
+.swatch:hover { transform: scale(1.15); }
+.swatch.selected { border-color: var(--color-text); transform: scale(1.1); }
+.actions { display: flex; gap: 10px; justify-content: flex-end; }

@@ -1,0 +1,6 @@
+.page { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.content { text-align: center; }
+.emoji { font-size: 4rem; margin-bottom: 12px; }
+h1 { font-size: 4rem; color: var(--color-purple); margin-bottom: 8px; }
+p { color: var(--color-text-muted); margin-bottom: 20px; }
+.link { color: var(--color-purple); font-weight: 600; text-decoration: underline; }

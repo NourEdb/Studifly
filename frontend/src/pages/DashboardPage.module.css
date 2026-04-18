@@ -1,0 +1,4 @@
+.page { display: flex; flex-direction: column; gap: 24px; }
+.stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+.charts { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+.right { display: flex; flex-direction: column; gap: 16px; }

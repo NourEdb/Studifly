@@ -1,0 +1,28 @@
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const errorHandler = require('./middleware/errorHandler');
+
+const authRoutes = require('./routes/auth.routes');
+const coursesRoutes = require('./routes/courses.routes');
+const tasksRoutes = require('./routes/tasks.routes');
+const sessionsRoutes = require('./routes/sessions.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
+
+const app = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(morgan('dev'));
+app.use(express.json());
+
+app.use('/api/auth', authRoutes);
+app.use('/api/courses', coursesRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/sessions', sessionsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+
+app.use(errorHandler);
+
+module.exports = app;

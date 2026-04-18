@@ -1,0 +1,2 @@
+.nav { display: flex; align-items: center; gap: 12px; }
+.label { font-weight: 600; font-size: 0.9375rem; min-width: 200px; text-align: center; }
