@@ -1,39 +1,19 @@
 const authService = require('../services/auth.service');
 
-function registerHandler(req, res, next) {
-  try {
-    const user = authService.register(req.body);
-    res.status(201).json(user);
-  } catch (err) {
-    next(err);
-  }
-}
+const registerHandler = async (req, res, next) => {
+  try { res.status(201).json(await authService.register(req.body)); } catch (e) { next(e); }
+};
 
-function loginHandler(req, res, next) {
-  try {
-    const result = authService.login(req.body);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-}
+const loginHandler = async (req, res, next) => {
+  try { res.json(await authService.login(req.body)); } catch (e) { next(e); }
+};
 
-function meHandler(req, res, next) {
-  try {
-    const user = authService.getMe(req.user.id);
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-}
+const meHandler = async (req, res, next) => {
+  try { res.json(await authService.getMe(req.user.id)); } catch (e) { next(e); }
+};
 
-function updateMeHandler(req, res, next) {
-  try {
-    const user = authService.updateMe(req.user.id, req.body);
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-}
+const updateMeHandler = async (req, res, next) => {
+  try { res.json(await authService.updateMe(req.user.id, req.body)); } catch (e) { next(e); }
+};
 
 module.exports = { registerHandler, loginHandler, meHandler, updateMeHandler };

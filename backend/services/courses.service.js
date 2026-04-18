@@ -1,32 +1,36 @@
-const { getDb } = require('../database/db');
+const db = require('../database/db');
 
-function getAll(userId) {
-  return getDb().prepare('SELECT * FROM courses WHERE user_id = ? ORDER BY created_at DESC').all(userId);
+async function getAll(userId) {
+  return db.all('SELECT * FROM courses WHERE user_id = ? ORDER BY created_at DESC', [userId]);
 }
 
-function create(userId, { name, color }) {
-  const db = getDb();
-  const result = db.prepare('INSERT INTO courses (user_id, name, color) VALUES (?, ?, ?)').run(userId, name, color || '#6C4DC4');
-  return db.prepare('SELECT * FROM courses WHERE id = ?').get(Number(result.lastInsertRowid));
+async function create(userId, { name, color }) {
+  return db.get(
+    'INSERT INTO courses (user_id, name, color) VALUES (?, ?, ?) RETURNING *',
+    [userId, name, color || '#6C4DC4']
+  );
 }
 
-function update(userId, id, { name, color }) {
-  const db = getDb();
-  const course = db.prepare('SELECT * FROM courses WHERE id = ? AND user_id = ?').get(id, userId);
+async function update(userId, id, body) {
+  const course = await db.get('SELECT id FROM courses WHERE id = ? AND user_id = ?', [id, userId]);
   if (!course) { const e = new Error('Not found'); e.status = 404; throw e; }
-  db.prepare('UPDATE courses SET name = COALESCE(?, name), color = COALESCE(?, color) WHERE id = ?').run(name || null, color || null, id);
-  return db.prepare('SELECT * FROM courses WHERE id = ?').get(id);
+  const fields = [];
+  const params = [];
+  if (body.name) { fields.push('name = ?'); params.push(body.name); }
+  if (body.color) { fields.push('color = ?'); params.push(body.color); }
+  if (!fields.length) return db.get('SELECT * FROM courses WHERE id = ?', [id]);
+  params.push(id);
+  return db.get(`UPDATE courses SET ${fields.join(', ')} WHERE id = ? RETURNING *`, params);
 }
 
-function remove(userId, id) {
-  const db = getDb();
-  const course = db.prepare('SELECT id FROM courses WHERE id = ? AND user_id = ?').get(id, userId);
+async function remove(userId, id) {
+  const course = await db.get('SELECT id FROM courses WHERE id = ? AND user_id = ?', [id, userId]);
   if (!course) { const e = new Error('Not found'); e.status = 404; throw e; }
-  db.prepare('DELETE FROM courses WHERE id = ?').run(id);
+  await db.run('DELETE FROM courses WHERE id = ?', [id]);
 }
 
-function getTasksByCourse(userId, courseId) {
-  return getDb().prepare('SELECT * FROM tasks WHERE course_id = ? AND user_id = ? ORDER BY created_at DESC').all(courseId, userId);
+async function getTasksByCourse(userId, courseId) {
+  return db.all('SELECT * FROM tasks WHERE course_id = ? AND user_id = ? ORDER BY created_at DESC', [courseId, userId]);
 }
 
 module.exports = { getAll, create, update, remove, getTasksByCourse };

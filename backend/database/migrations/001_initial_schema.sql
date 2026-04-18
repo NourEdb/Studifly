@@ -1,44 +1,41 @@
-PRAGMA journal_mode=WAL;
-PRAGMA foreign_keys=ON;
-
 CREATE TABLE IF NOT EXISTS users (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  username      TEXT    NOT NULL UNIQUE,
-  email         TEXT    NOT NULL UNIQUE,
-  password_hash TEXT    NOT NULL,
-  created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  id            SERIAL PRIMARY KEY,
+  username      TEXT        NOT NULL UNIQUE,
+  email         TEXT        NOT NULL UNIQUE,
+  password_hash TEXT        NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS courses (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name       TEXT    NOT NULL,
-  color      TEXT    NOT NULL DEFAULT '#6C4DC4',
-  created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name       TEXT        NOT NULL,
+  color      TEXT        NOT NULL DEFAULT '#6C4DC4',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-  id            INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  course_id     INTEGER REFERENCES courses(id) ON DELETE SET NULL,
-  name          TEXT    NOT NULL,
-  activity_type TEXT    NOT NULL CHECK (activity_type IN ('reading','practice','watching','other')),
-  planned_time  INTEGER NOT NULL DEFAULT 0,
+  id            SERIAL PRIMARY KEY,
+  user_id       INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  course_id     INTEGER     REFERENCES courses(id) ON DELETE SET NULL,
+  name          TEXT        NOT NULL,
+  activity_type TEXT        NOT NULL CHECK (activity_type IN ('reading','practice','watching','other')),
+  planned_time  INTEGER     NOT NULL DEFAULT 0,
   due_date      TEXT,
-  status        TEXT    NOT NULL DEFAULT 'pending'
+  status        TEXT        NOT NULL DEFAULT 'pending'
                 CHECK (status IN ('pending','in_progress','completed')),
-  created_at    TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS study_sessions (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  task_id    INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
-  start_time TEXT    NOT NULL,
-  end_time   TEXT,
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER     NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  task_id    INTEGER     REFERENCES tasks(id) ON DELETE SET NULL,
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time   TIMESTAMPTZ,
   duration   INTEGER,
-  is_manual  INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+  is_manual  SMALLINT    NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_courses_user   ON courses(user_id);

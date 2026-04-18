@@ -1,25 +1,23 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { getDb } = require('../database/db');
+const db = require('../database/db');
 
-function register({ username, email, password }) {
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM users WHERE username = ? OR email = ?').get(username, email);
+async function register({ username, email, password }) {
+  const existing = await db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
   if (existing) {
     const err = new Error('Username or email already taken');
     err.status = 409;
     throw err;
   }
   const password_hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare(
-    'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)'
-  ).run(username, email, password_hash);
-  return { id: Number(result.lastInsertRowid), username, email };
+  return db.get(
+    'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?) RETURNING id, username, email',
+    [username, email, password_hash]
+  );
 }
 
-function login({ username, password }) {
-  const db = getDb();
-  const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+async function login({ username, password }) {
+  const user = await db.get('SELECT * FROM users WHERE username = ?', [username]);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     const err = new Error('Invalid credentials');
     err.status = 401;
@@ -33,15 +31,15 @@ function login({ username, password }) {
   return { token, user: { id: user.id, username: user.username, email: user.email } };
 }
 
-function getMe(userId) {
-  const db = getDb();
-  return db.prepare('SELECT id, username, email, created_at FROM users WHERE id = ?').get(userId);
+async function getMe(userId) {
+  return db.get('SELECT id, username, email, created_at FROM users WHERE id = ?', [userId]);
 }
 
-function updateMe(userId, { username, email }) {
-  const db = getDb();
-  db.prepare('UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?')
-    .run(username || null, email || null, userId);
+async function updateMe(userId, { username, email }) {
+  await db.run(
+    'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?',
+    [username || null, email || null, userId]
+  );
   return getMe(userId);
 }
 
