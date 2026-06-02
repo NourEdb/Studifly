@@ -8,6 +8,7 @@ import CoursesPage from './pages/CoursesPage';
 import TasksPage from './pages/TasksPage';
 import TrackerPage from './pages/TrackerPage';
 import PlannerPage from './pages/PlannerPage';
+import AchievementsPage from './pages/AchievementsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function ProtectedRoute({ children }) {
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="tracker" element={<TrackerPage />} />
         <Route path="planner" element={<PlannerPage />} />
+        <Route path="achievements" element={<AchievementsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

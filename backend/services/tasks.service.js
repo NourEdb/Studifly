@@ -1,5 +1,6 @@
 const db = require('../database/db');
 const { getISOWeekBounds } = require('../utils/dateHelpers');
+const gamification = require('./gamification.service');
 
 async function getOne(userId, id) {
   const task = await db.get(
@@ -70,6 +71,9 @@ async function updateStatus(userId, id, status) {
   const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
   if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
   await db.run('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
+  if (status === 'completed') {
+    gamification.onTaskComplete(userId, id).catch(() => {});
+  }
   return getOne(userId, id);
 }
 

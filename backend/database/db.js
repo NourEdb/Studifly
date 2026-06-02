@@ -7,11 +7,16 @@ const pool = new Pool({
   ssl: process.env.DATABASE_URL?.includes('localhost') ? false : { rejectUnauthorized: false },
 });
 
-const MIGRATION_PATH = path.join(__dirname, 'migrations/001_initial_schema.sql');
+const MIGRATIONS = [
+  path.join(__dirname, 'migrations/001_initial_schema.sql'),
+  path.join(__dirname, 'migrations/002_gamification.sql'),
+];
 
 async function initDb() {
-  const sql = fs.readFileSync(MIGRATION_PATH, 'utf8');
-  await pool.query(sql);
+  for (const file of MIGRATIONS) {
+    const sql = fs.readFileSync(file, 'utf8');
+    await pool.query(sql);
+  }
   console.log('Database ready');
 }
 

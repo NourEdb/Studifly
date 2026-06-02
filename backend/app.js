@@ -9,6 +9,7 @@ const coursesRoutes = require('./routes/courses.routes');
 const tasksRoutes = require('./routes/tasks.routes');
 const sessionsRoutes = require('./routes/sessions.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
+const gamificationRoutes = require('./routes/gamification.routes');
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use('/api/courses', coursesRoutes);
 app.use('/api/tasks', tasksRoutes);
 app.use('/api/sessions', sessionsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/gamification', gamificationRoutes);
 
 app.use(errorHandler);
 

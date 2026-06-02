@@ -1,5 +1,6 @@
 const db = require('../database/db');
 const { getISOWeekBounds } = require('../utils/dateHelpers');
+const gamification = require('./gamification.service');
 
 async function start(userId, { task_id }) {
   return db.get(
@@ -14,18 +15,22 @@ async function stop(userId, id) {
   if (session.end_time) { const e = new Error('Session already stopped'); e.status = 400; throw e; }
   const end_time = new Date();
   const duration = Math.round((end_time - new Date(session.start_time)) / 1000);
-  return db.get(
+  const updated = await db.get(
     'UPDATE study_sessions SET end_time = NOW(), duration = ? WHERE id = ? RETURNING *',
     [duration, id]
   );
+  gamification.onSessionComplete(userId, updated).catch(() => {});
+  return updated;
 }
 
 async function manual(userId, { task_id, start_time, end_time, duration }) {
   const dur = duration || Math.round((new Date(end_time) - new Date(start_time)) / 1000);
-  return db.get(
+  const session = await db.get(
     'INSERT INTO study_sessions (user_id, task_id, start_time, end_time, duration, is_manual) VALUES (?,?,?,?,?,1) RETURNING *',
     [userId, task_id || null, start_time, end_time || null, dur]
   );
+  gamification.onSessionComplete(userId, session).catch(() => {});
+  return session;
 }
 
 async function getAll(userId, filters = {}) {
