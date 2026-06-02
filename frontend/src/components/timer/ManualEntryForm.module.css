@@ -8,4 +8,4 @@
   background: var(--color-surface); color: var(--color-text); outline: none;
 }
 .field select:focus { border-color: var(--color-purple); }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row { display: flex; flex-direction: column; gap: 12px; }

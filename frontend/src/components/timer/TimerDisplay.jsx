@@ -4,7 +4,7 @@ function fmt(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  return [h, m, s].map((v, i) => i === 0 && v === 0 ? null : String(v).padStart(2, '0')).filter(Boolean).join(':') || '0:00';
+  return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
 }
 
 export default function TimerDisplay({ seconds, size = 'lg' }) {

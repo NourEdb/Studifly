@@ -6,12 +6,25 @@ import styles from './TaskForm.module.css';
 
 const ACTIVITY_TYPES = ['reading', 'practice', 'watching', 'other'];
 
+function minsToHHMM(mins) {
+  if (!mins) return '';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function hhmmToMins(hhmm) {
+  if (!hhmm) return 0;
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
 export default function TaskForm({ initial, courses, onSave, onClose }) {
   const [form, setForm] = useState({
     name: initial?.name || '',
     course_id: initial?.course_id || '',
     activity_type: initial?.activity_type || 'reading',
-    planned_time: initial?.planned_time || '',
+    planned_time: minsToHHMM(initial?.planned_time),
     due_date: initial?.due_date || '',
     status: initial?.status || 'pending',
   });
@@ -26,7 +39,7 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
       await onSave({
         ...form,
         course_id: form.course_id || null,
-        planned_time: parseInt(form.planned_time) || 0,
+        planned_time: hhmmToMins(form.planned_time),
         due_date: form.due_date || null,
       });
       onClose();
@@ -65,9 +78,10 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
         <div className={styles.row}>
           <Input
             id="task-time"
-            label="Planned time (min)"
-            type="number"
-            min="0"
+            label="Planned time (HH:MM)"
+            type="text"
+            placeholder="00:00"
+            pattern="[0-9]{1,3}:[0-5][0-9]"
             value={form.planned_time}
             onChange={e => set('planned_time', e.target.value)}
           />
