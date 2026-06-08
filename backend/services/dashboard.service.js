@@ -67,4 +67,20 @@ async function getByCourse(userId) {
   );
 }
 
-module.exports = { getSummary, getWeeklyHours, getByCourse };
+// Returns total seconds per (day-of-week, hour) slot across all sessions.
+// dow: 1=Monday … 7=Sunday  (ISO day of week)
+// hour: 0–23 (UTC)
+async function getHeatmap(userId) {
+  return db.all(
+    `SELECT
+       EXTRACT(ISODOW FROM start_time AT TIME ZONE 'UTC')::int AS dow,
+       EXTRACT(HOUR  FROM start_time AT TIME ZONE 'UTC')::int AS hour,
+       SUM(duration)::int                                      AS total_seconds
+     FROM study_sessions
+     WHERE user_id = ? AND duration IS NOT NULL
+     GROUP BY dow, hour`,
+    [userId]
+  );
+}
+
+module.exports = { getSummary, getWeeklyHours, getByCourse, getHeatmap };

@@ -7,5 +7,6 @@ router.use(auth);
 router.get('/summary', ctrl.summary);
 router.get('/weekly-hours', ctrl.weeklyHours);
 router.get('/by-course', ctrl.byCourse);
+router.get('/heatmap', ctrl.heatmap);
 
 module.exports = router;

@@ -3,6 +3,7 @@ import StatCard from '../components/dashboard/StatCard';
 import WeeklyBarChart from '../components/dashboard/WeeklyBarChart';
 import GoalProgress from '../components/dashboard/GoalProgress';
 import TaskSummaryList from '../components/dashboard/TaskSummaryList';
+import HeatMap from '../components/dashboard/HeatMap';
 import styles from './DashboardPage.module.css';
 
 function fmtHours(seconds) {
@@ -12,7 +13,7 @@ function fmtHours(seconds) {
 }
 
 export default function DashboardPage() {
-  const { summary, weeklyHours, byCourse, loading } = useDashboard();
+  const { summary, weeklyHours, byCourse, heatmap, loading } = useDashboard();
 
   if (loading || !summary) return <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>;
 
@@ -56,6 +57,8 @@ export default function DashboardPage() {
           <TaskSummaryList byCourse={byCourse} />
         </div>
       </div>
+
+      <HeatMap data={heatmap} />
     </div>
   );
 }

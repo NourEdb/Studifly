@@ -1,0 +1,79 @@
+.title { font-size: 1rem; font-weight: 600; margin: 0 0 2px; }
+.sub   { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0 0 16px; }
+
+.chart { display: flex; flex-direction: column; gap: 0; }
+
+/* Rows */
+.rows { display: flex; flex-direction: column; gap: 3px; }
+
+.row { display: flex; align-items: center; gap: 8px; }
+
+.dayLabel {
+  width: 28px;
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  text-align: right;
+}
+
+.cells {
+  display: grid;
+  grid-template-columns: repeat(24, 1fr);
+  gap: 3px;
+  flex: 1;
+}
+
+.cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  min-width: 0;
+  cursor: default;
+  transition: opacity 0.1s;
+}
+
+.cell:hover { opacity: 0.75; }
+
+/* X-axis */
+.xAxis {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.xSpacer { width: 28px; flex-shrink: 0; }
+
+.xLabels {
+  flex: 1;
+  position: relative;
+  height: 16px;
+}
+
+.hourLabel {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+
+.legendLabel {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  margin: 0 2px;
+}
+
+.legendCell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
