@@ -11,6 +11,7 @@ const NAV = [
   { to: '/tracker', icon: '⏱️', label: 'Tracker' },
   { to: '/planner', icon: '📅', label: 'Planner' },
   { to: '/achievements', icon: '🏆', label: 'Achievements' },
+  { to: '/ai-coach',     icon: '🧠', label: 'AI Coach' },
 ];
 
 export default function Sidebar() {
