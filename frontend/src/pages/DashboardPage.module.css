@@ -1,4 +1,29 @@
 .page { display: flex; flex-direction: column; gap: 24px; }
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pageTitle { margin: 0; }
+
+.exportBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: var(--color-purple);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.exportBtn:hover:not(:disabled) { background: var(--color-purple-dark); }
+.exportBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .charts { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
 .right { display: flex; flex-direction: column; gap: 16px; }
