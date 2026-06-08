@@ -83,4 +83,18 @@ async function getHeatmap(userId) {
   );
 }
 
-module.exports = { getSummary, getWeeklyHours, getByCourse, getHeatmap };
+async function getCourseComparison(userId) {
+  return db.all(
+    `SELECT c.name AS course_name, c.color,
+            COALESCE(SUM(s.duration), 0)::int AS total_seconds
+     FROM study_sessions s
+     JOIN tasks t ON s.task_id = t.id
+     JOIN courses c ON t.course_id = c.id
+     WHERE s.user_id = ? AND s.duration IS NOT NULL
+     GROUP BY c.id, c.name, c.color
+     ORDER BY total_seconds DESC`,
+    [userId]
+  );
+}
+
+module.exports = { getSummary, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison };

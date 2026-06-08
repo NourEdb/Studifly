@@ -8,5 +8,6 @@ router.get('/summary', ctrl.summary);
 router.get('/weekly-hours', ctrl.weeklyHours);
 router.get('/by-course', ctrl.byCourse);
 router.get('/heatmap', ctrl.heatmap);
+router.get('/course-comparison', ctrl.courseComparison);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSummary, getWeeklyHours, getByCourse, getHeatmap } from '../api/dashboard.api';
+import { getSummary, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison } from '../api/dashboard.api';
 import toast from 'react-hot-toast';
 
 export default function useDashboard() {
@@ -7,14 +7,15 @@ export default function useDashboard() {
   const [weeklyHours, setWeeklyHours] = useState([]);
   const [byCourse, setByCourse] = useState([]);
   const [heatmap, setHeatmap] = useState([]);
+  const [courseComparison, setCourseComparison] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([getSummary(), getWeeklyHours(6), getByCourse(), getHeatmap()])
-      .then(([s, w, c, h]) => { setSummary(s); setWeeklyHours(w); setByCourse(c); setHeatmap(h); })
+    Promise.all([getSummary(), getWeeklyHours(6), getByCourse(), getHeatmap(), getCourseComparison()])
+      .then(([s, w, c, h, cc]) => { setSummary(s); setWeeklyHours(w); setByCourse(c); setHeatmap(h); setCourseComparison(cc); })
       .catch(() => toast.error('Failed to load dashboard data'))
       .finally(() => setLoading(false));
   }, []);
 
-  return { summary, weeklyHours, byCourse, heatmap, loading };
+  return { summary, weeklyHours, byCourse, heatmap, courseComparison, loading };
 }

@@ -6,6 +6,7 @@ import WeeklyBarChart from '../components/dashboard/WeeklyBarChart';
 import GoalProgress from '../components/dashboard/GoalProgress';
 import TaskSummaryList from '../components/dashboard/TaskSummaryList';
 import HeatMap from '../components/dashboard/HeatMap';
+import CourseComparisonCharts from '../components/dashboard/CourseComparisonCharts';
 import { generateDashboardPdf } from '../utils/generatePdf';
 import styles from './DashboardPage.module.css';
 
@@ -16,7 +17,7 @@ function fmtHours(seconds) {
 }
 
 export default function DashboardPage() {
-  const { summary, weeklyHours, byCourse, heatmap, loading } = useDashboard();
+  const { summary, weeklyHours, byCourse, heatmap, courseComparison, loading } = useDashboard();
   const { user } = useAuth();
   const chartRef   = useRef(null);
   const heatmapRef = useRef(null);
@@ -92,6 +93,8 @@ export default function DashboardPage() {
       <div ref={heatmapRef}>
         <HeatMap data={heatmap} />
       </div>
+
+      <CourseComparisonCharts data={courseComparison} />
     </div>
   );
 }
