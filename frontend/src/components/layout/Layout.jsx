@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import NotificationBell from './NotificationBell';
 import styles from './Layout.module.css';
 
 const PAGE_TITLES = {
@@ -20,6 +21,7 @@ export default function Layout() {
       <div className={styles.main}>
         <header className={styles.topbar}>
           <h1 className={styles.pageTitle}>{title}</h1>
+          <NotificationBell />
         </header>
         <main className={styles.content}>
           <Outlet />
