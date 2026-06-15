@@ -10,6 +10,7 @@ const pool = new Pool({
 const MIGRATIONS = [
   path.join(__dirname, 'migrations/001_initial_schema.sql'),
   path.join(__dirname, 'migrations/002_gamification.sql'),
+  path.join(__dirname, 'migrations/003_events.sql'),
 ];
 
 async function initDb() {
