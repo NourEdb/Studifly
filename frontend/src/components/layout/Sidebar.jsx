@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTimerContext } from '../../context/TimerContext';
+import { useTheme } from '../../context/ThemeContext';
 import logo from '../../assets/studifly-logo.png';
 import styles from './Sidebar.module.css';
 
@@ -17,6 +18,7 @@ const NAV = [
 export default function Sidebar() {
   const { logoutUser, user } = useAuth();
   const { isRunning } = useTimerContext();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
   function handleLogout() {
@@ -46,6 +48,10 @@ export default function Sidebar() {
       </nav>
 
       <div className={styles.bottom}>
+        <button className={styles.themeToggle} onClick={toggleTheme}>
+          {theme === 'dark' ? '☀️' : '🌙'}
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <div className={styles.user}>
           <div className={styles.avatar}>{user?.username?.[0]?.toUpperCase()}</div>
           <span className={styles.username}>{user?.username}</span>

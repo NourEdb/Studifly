@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #f0ecfd 0%, #e8f4fc 50%, #fde8f3 100%);
+  background: var(--color-auth-bg);
   padding: 24px;
 }
 .card {
