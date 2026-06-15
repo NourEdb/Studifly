@@ -1,20 +1,81 @@
 .page { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; }
 .left { display: flex; flex-direction: column; gap: 16px; }
 .right {}
-.historyTitle { margin-bottom: 16px; }
+
+.historyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.historyTitle { }
+.cleanupBtn {
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  background: none;
+  border: 1px solid var(--color-error);
+  color: var(--color-error);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cleanupBtn:hover:not(:disabled) { background: var(--color-error-tint); }
+.cleanupBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .empty { color: var(--color-text-muted); }
 .sessionList { display: flex; flex-direction: column; gap: 2px; }
+
 .session {
-  padding: 12px 16px;
+  padding: 10px 12px 10px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
+.session.incomplete {
+  border-color: rgba(245, 166, 35, 0.4);
+  background: rgba(245, 166, 35, 0.04);
+}
+
 .sessionMeta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .sessionDate { font-size: 0.75rem; color: var(--color-text-muted); min-width: 60px; }
 .sessionTime { font-size: 0.8125rem; color: var(--color-text-muted); }
-.manual { font-size: 0.7rem; background: #fef8e0; color: #b58a0a; padding: 2px 6px; border-radius: 99px; font-weight: 600; }
+.manual {
+  font-size: 0.7rem;
+  background: #fef8e0;
+  color: #b58a0a;
+  padding: 2px 6px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.incompleteTag {
+  font-size: 0.7rem;
+  background: rgba(245, 166, 35, 0.15);
+  color: var(--color-warning);
+  padding: 2px 6px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+
 .sessionInfo { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: flex-end; }
 .sessionTask { font-weight: 500; font-size: 0.875rem; }
 .sessionDuration { font-weight: 700; color: var(--color-purple); min-width: 50px; text-align: right; }
+
+.deleteBtn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+.session:hover .deleteBtn { opacity: 1; }
+.deleteBtn:hover { color: var(--color-error); background: var(--color-error-tint); }
