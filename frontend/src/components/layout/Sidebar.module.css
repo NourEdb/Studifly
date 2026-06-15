@@ -12,7 +12,13 @@
   height: 100vh;
 }
 .brand { text-align: center; padding: 8px 0 24px; }
-.logo { width: 70px; height: auto; }
+.logoImg {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
 .tagline { font-size: 0.75rem; color: var(--color-blue); font-weight: 500; margin-top: 4px; }
 
 .nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }

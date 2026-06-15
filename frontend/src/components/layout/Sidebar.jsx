@@ -29,7 +29,7 @@ export default function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <img src={logo} alt="Studifly" className={styles.logo} />
+        <img src={logo} alt="Studifly" className={styles.logoImg} />
         <p className={styles.tagline}>Learn, grow, and fly.</p>
       </div>
 
