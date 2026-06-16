@@ -19,7 +19,8 @@ async function getOne(userId, id) {
 }
 
 async function getAll(userId, filters = {}) {
-  let sql = `SELECT t.*, c.name as course_name, c.color as course_color
+  let sql = `SELECT t.*, c.name as course_name, c.color as course_color,
+             COALESCE((SELECT SUM(s.duration) FROM study_sessions s WHERE s.task_id = t.id AND s.duration IS NOT NULL), 0)::int AS actual_seconds
              FROM tasks t LEFT JOIN courses c ON t.course_id = c.id
              WHERE t.user_id = ?`;
   const params = [userId];
@@ -72,7 +73,7 @@ async function updateStatus(userId, id, status) {
   if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
   await db.run('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
   if (status === 'completed') {
-    gamification.onTaskComplete(userId, id).catch(() => {});
+    gamification.onTaskComplete(userId, id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
   }
   return getOne(userId, id);
 }

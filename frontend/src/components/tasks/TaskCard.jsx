@@ -5,10 +5,17 @@ import Button from '../ui/Button';
 import TaskStatusBadge from './TaskStatusBadge';
 import styles from './TaskCard.module.css';
 
+function fmtSeconds(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
 export default function TaskCard({ task, onEdit, onDelete, onToggle, onStartTimer }) {
   const isOverdue = task.overdue;
   const dueLabel = task.due_date ? new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const plannedH = task.planned_time ? `${Math.floor(task.planned_time / 60)}h ${task.planned_time % 60}m`.replace('0h ', '') : null;
+  const actualH  = fmtSeconds(task.actual_seconds ?? 0);
 
   return (
     <Card className={[styles.card, isOverdue && styles.overdue, task.status === 'completed' && styles.done].filter(Boolean).join(' ')}>
@@ -34,7 +41,8 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onStartTime
                 {isOverdue ? '⚠ ' : '📅 '}{dueLabel}
               </span>
             )}
-            {plannedH && <span className={styles.planned}>🎯 {plannedH}</span>}
+            {plannedH && <span className={styles.planned}>Planned: {plannedH}</span>}
+            <span className={styles.actual}>Actual: {actualH}</span>
           </div>
         </div>
         <div className={styles.actions}>

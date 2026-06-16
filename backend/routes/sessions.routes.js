@@ -8,12 +8,14 @@ router.use(auth);
 
 router.post('/start', ctrl.startSession);
 router.patch('/:id/stop', ctrl.stopSession);
+router.patch('/:id/reflect', ctrl.reflectSession);
 router.post('/manual',
   body('start_time').isISO8601(),
   validate,
   ctrl.manualEntry
 );
 router.get('/', ctrl.getAll);
+router.get('/task-total', ctrl.getTaskTotal);
 router.delete('/:id', ctrl.remove);
 
 module.exports = router;

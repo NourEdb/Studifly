@@ -35,6 +35,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 .session.incomplete {
   border-color: rgba(245, 166, 35, 0.4);
@@ -61,9 +62,47 @@
   font-weight: 600;
 }
 
-.sessionInfo { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: flex-end; }
+.statusTag {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 99px;
+  font-weight: 600;
+}
+.statusDone     { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+.statusPartial  { background: rgba(245, 166, 35, 0.15); color: #b58a0a; }
+.statusNeeds    { background: rgba(239, 68, 68, 0.12); color: #dc2626; }
+.statusContinued{ background: rgba(108, 77, 196, 0.12); color: var(--color-purple); }
+
+.sessionInfo { display: flex; align-items: center; gap: 12px; flex: 1; justify-content: flex-end; flex-wrap: wrap; }
 .sessionTask { font-weight: 500; font-size: 0.875rem; }
 .sessionDuration { font-weight: 700; color: var(--color-purple); min-width: 50px; text-align: right; }
+
+.stars { font-size: 0.75rem; color: #f5a623; letter-spacing: 1px; }
+
+.resumeBtn {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1.5px solid var(--color-purple);
+  background: transparent;
+  color: var(--color-purple);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.resumeBtn:hover { background: var(--color-purple); color: #fff; }
+
+.sessionNotes {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: 4px 0 0 16px;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .deleteBtn {
   flex-shrink: 0;

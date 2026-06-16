@@ -1,5 +1,5 @@
 const db = require('../database/db');
-const { currentISOWeek } = require('../utils/dateHelpers');
+const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 
 const XP_PER_LEVEL = 200;
 
@@ -37,7 +37,7 @@ async function awardXP(userId, amount, refType, refId) {
   );
 }
 
-// Awards a badge. Silently skips if already earned.
+// Awards a badge. Silently skips if already earned (ON CONFLICT).
 async function awardBadge(userId, badgeKey) {
   await db.run(
     'INSERT INTO user_badges (user_id, badge_key) VALUES (?,?) ON CONFLICT (user_id, badge_key) DO NOTHING',
@@ -46,25 +46,31 @@ async function awardBadge(userId, badgeKey) {
 }
 
 async function checkWeekStreak(userId) {
+  // Count distinct UTC study dates in the last 7 days (today + 6 previous).
+  // Both sides use explicit UTC so server timezone never affects the result.
   const row = await db.get(
-    `SELECT COUNT(DISTINCT DATE(start_time AT TIME ZONE 'UTC')) AS study_days
+    `SELECT COUNT(DISTINCT (start_time AT TIME ZONE 'UTC')::date)::int AS study_days
      FROM study_sessions
-     WHERE user_id = ? AND start_time >= (CURRENT_DATE - INTERVAL '6 days')`,
+     WHERE user_id = ?
+       AND (start_time AT TIME ZONE 'UTC')::date
+             >= (NOW() AT TIME ZONE 'UTC')::date - INTERVAL '6 days'`,
     [userId]
   );
-  if (parseInt(row?.study_days || 0) >= 7) {
+  if ((row?.study_days || 0) >= 7) {
     await awardBadge(userId, 'week_streak');
   }
 }
 
 async function checkWeeklyGoal(userId) {
+  // Use the same ISO week boundaries as the rest of the codebase (UTC-based).
+  const { start, end } = getISOWeekBounds(currentISOWeek());
   const row = await db.get(
-    `SELECT COALESCE(SUM(duration), 0) AS total_seconds
+    `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds
      FROM study_sessions
-     WHERE user_id = ? AND start_time >= DATE_TRUNC('week', NOW()) AND duration IS NOT NULL`,
-    [userId]
+     WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL`,
+    [userId, start, end]
   );
-  if (parseInt(row?.total_seconds || 0) >= WEEKLY_GOAL_SECONDS) {
+  if ((row?.total_seconds || 0) >= WEEKLY_GOAL_SECONDS) {
     const week = currentISOWeek();
     await awardXP(userId, 100, 'weekly_goal', week);
     await awardBadge(userId, 'goal_crusher');
@@ -81,26 +87,25 @@ async function onSessionComplete(userId, session) {
     await awardXP(userId, units * 10, 'session', String(session.id));
   }
 
-  // Time-of-day badges
+  // Time-of-day badges — use UTC hour from the stored TIMESTAMPTZ
   const hour = new Date(session.start_time).getUTCHours();
   if (hour >= 22) await awardBadge(userId, 'night_owl');
-  if (hour < 8)  await awardBadge(userId, 'early_bird');
+  if (hour < 8)   await awardBadge(userId, 'early_bird');
 
   await checkWeekStreak(userId);
   await checkWeeklyGoal(userId);
 }
 
-// Called when a task is marked completed.
+// Called when a task is marked completed (any code path).
 async function onTaskComplete(userId, taskId) {
+  // Award 50 XP (idempotent — duplicate prevented by xp_log unique constraint).
   await awardXP(userId, 50, 'task', String(taskId));
 
-  const row = await db.get(
-    "SELECT COUNT(*) AS cnt FROM tasks WHERE user_id = ? AND status = 'completed'",
-    [userId]
-  );
-  if (parseInt(row?.cnt || 0) === 1) {
-    await awardBadge(userId, 'first_task');
-  }
+  // Award first-task badge unconditionally. awardBadge uses ON CONFLICT DO NOTHING
+  // so it is only inserted once regardless of how many tasks the user completes.
+  // Previously this used a COUNT === 1 check which became permanently unreachable
+  // if the very first call ever failed silently.
+  await awardBadge(userId, 'first_task');
 }
 
 async function getProfile(userId) {

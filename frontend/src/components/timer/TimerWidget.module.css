@@ -1,6 +1,7 @@
 .widget { display: flex; flex-direction: column; gap: 20px; align-items: center; }
 .displayWrapper { text-align: center; }
 .taskLabel { font-size: 0.875rem; color: var(--color-text-muted); margin-top: 6px; }
+.taskTotal { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; opacity: 0.75; }
 .controls { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 .field { display: flex; flex-direction: column; gap: 5px; }
 .field label { font-size: 0.8125rem; font-weight: 600; }

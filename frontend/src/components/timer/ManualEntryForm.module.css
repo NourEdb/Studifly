@@ -9,3 +9,36 @@
 }
 .field select:focus { border-color: var(--color-purple); }
 .row { display: flex; flex-direction: column; gap: 12px; }
+
+.durationPreview {
+  font-size: 0.8125rem;
+  color: var(--color-purple);
+  font-weight: 600;
+  margin: 0;
+}
+
+.ratingsRow { display: flex; gap: 24px; flex-wrap: wrap; }
+.ratingGroup { display: flex; flex-direction: column; gap: 5px; }
+.ratingLabel { font-size: 0.8125rem; font-weight: 600; color: var(--color-text-muted); }
+.stars { display: flex; gap: 3px; }
+.star {
+  background: none; border: none;
+  font-size: 1.3rem; color: var(--color-border);
+  cursor: pointer; padding: 0 2px; line-height: 1;
+  transition: color 0.1s, transform 0.1s;
+}
+.star:hover { transform: scale(1.15); color: #f5a623; }
+.starActive { color: #f5a623; }
+
+.textarea {
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+}
+.textarea:focus { border-color: var(--color-purple); }

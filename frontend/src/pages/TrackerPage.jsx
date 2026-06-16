@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import TimerWidget from '../components/timer/TimerWidget';
 import ManualEntryForm from '../components/timer/ManualEntryForm';
 import useTasks from '../hooks/useTasks';
 import useSessions from '../hooks/useSessions';
-import { deleteSession } from '../api/sessions.api';
+import useTimer from '../hooks/useTimer';
+import { deleteSession, reflectSession } from '../api/sessions.api';
 import styles from './TrackerPage.module.css';
 
 function fmtDuration(seconds) {
@@ -24,9 +26,26 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+const STATUS_META = {
+  completed:       { label: 'done',        cls: 'statusDone' },
+  partial:         { label: 'partial',     cls: 'statusPartial' },
+  needs_more_time: { label: 'needs more',  cls: 'statusNeeds' },
+  continued:       { label: 'continued',   cls: 'statusContinued' },
+};
+
+function Stars({ value, title }) {
+  if (!value) return null;
+  return (
+    <span className={styles.stars} title={title}>
+      {'★'.repeat(value)}{'☆'.repeat(5 - value)}
+    </span>
+  );
+}
+
 export default function TrackerPage() {
   const { tasks } = useTasks();
   const { sessions, loading, remove, refresh } = useSessions({ limit: 50 });
+  const { isRunning, handleStart } = useTimer();
   const [cleaningUp, setCleaningUp] = useState(false);
 
   const incompleteSessions = sessions.filter(s => !s.end_time || !s.duration || s.duration === 0);
@@ -48,6 +67,21 @@ export default function TrackerPage() {
       await refresh();
     } finally {
       setCleaningUp(false);
+    }
+  }
+
+  async function handleResume(session) {
+    if (isRunning) {
+      toast.error('Stop your current session first');
+      return;
+    }
+    try {
+      await reflectSession(session.id, { resume_later: false });
+      const task = tasks.find(t => t.id === session.task_id);
+      await handleStart(session.task_id, task?.name || 'Untitled session');
+      refresh();
+    } catch {
+      toast.error('Failed to resume session');
     }
   }
 
@@ -84,6 +118,10 @@ export default function TrackerPage() {
             <div className={styles.sessionList}>
               {sessions.map(s => {
                 const incomplete = !s.end_time || !s.duration || s.duration === 0;
+                const statusMeta = STATUS_META[s.status];
+                const taskStatus = tasks.find(t => t.id === s.task_id)?.status;
+                const canResume = s.resume_later && taskStatus !== 'completed' && !incomplete;
+
                 return (
                   <div key={s.id} className={[styles.session, incomplete && styles.incomplete].filter(Boolean).join(' ')}>
                     <div className={styles.sessionMeta}>
@@ -91,11 +129,34 @@ export default function TrackerPage() {
                       <span className={styles.sessionTime}>{fmtTime(s.start_time)} – {fmtTime(s.end_time)}</span>
                       {s.is_manual === 1 && <span className={styles.manual}>manual</span>}
                       {incomplete && <span className={styles.incompleteTag}>incomplete</span>}
+                      {!incomplete && statusMeta && (
+                        <span className={[styles.statusTag, styles[statusMeta.cls]].join(' ')}>
+                          {statusMeta.label}
+                        </span>
+                      )}
                     </div>
+
                     <div className={styles.sessionInfo}>
                       <span className={styles.sessionTask}>{s.task_name || 'No task'}</span>
+                      {s.focus_score && (
+                        <Stars value={s.focus_score} title={`Focus: ${s.focus_score}/5`} />
+                      )}
+                      {canResume && (
+                        <button
+                          className={styles.resumeBtn}
+                          onClick={() => handleResume(s)}
+                          title="Resume this task"
+                        >
+                          ▶ Resume
+                        </button>
+                      )}
                       <span className={styles.sessionDuration}>{fmtDuration(s.duration)}</span>
                     </div>
+
+                    {s.notes && (
+                      <div className={styles.sessionNotes}>{s.notes}</div>
+                    )}
+
                     <button
                       className={styles.deleteBtn}
                       onClick={() => handleDelete(s.id)}

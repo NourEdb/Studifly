@@ -11,6 +11,9 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/001_initial_schema.sql'),
   path.join(__dirname, 'migrations/002_gamification.sql'),
   path.join(__dirname, 'migrations/003_events.sql'),
+  path.join(__dirname, 'migrations/004_session_reflection.sql'),
+  path.join(__dirname, 'migrations/005_resume_later.sql'),
+  path.join(__dirname, 'migrations/006_session_status_nullable.sql'),
 ];
 
 async function initDb() {

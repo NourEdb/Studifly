@@ -20,7 +20,7 @@
 .name { font-weight: 600; margin-bottom: 6px; font-size: 0.9375rem; }
 .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .course { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--color-text-muted); }
-.due, .planned { font-size: 0.75rem; color: var(--color-text-muted); }
+.due, .planned, .actual { font-size: 0.75rem; color: var(--color-text-muted); }
 .overdueDue { color: var(--color-error); font-weight: 600; }
 
 .actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
