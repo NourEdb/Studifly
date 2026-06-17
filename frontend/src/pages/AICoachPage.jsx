@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getCoachContext, sendChatMessage } from '../api/ai-coach.api';
+import { getCoachContext, getChatHistory, sendChatMessage, clearChatHistory } from '../api/ai-coach.api';
 import Card from '../components/ui/Card';
 import styles from './AICoachPage.module.css';
 
@@ -33,12 +33,20 @@ export default function AICoachPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [ctxLoading, setCtxLoading] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState(null);
   const bottomRef = useRef(null);
 
   useEffect(() => {
     getCoachContext()
       .then(setContext)
       .finally(() => setCtxLoading(false));
+
+    getChatHistory()
+      .then(({ messages: history }) => setMessages(history))
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   useEffect(() => {
@@ -50,13 +58,13 @@ export default function AICoachPage() {
     if (!trimmed || loading) return;
 
     const userMsg = { role: 'user', content: trimmed };
-    const next = [...messages, userMsg];
-    setMessages(next);
+    setMessages(m => [...m, userMsg]);
     setInput('');
     setLoading(true);
+    setClearConfirm(false);
 
     try {
-      const { reply } = await sendChatMessage(next);
+      const { reply } = await sendChatMessage(trimmed);
       setMessages(m => [...m, { role: 'assistant', content: reply }]);
     } catch {
       setMessages(m => [...m, {
@@ -73,9 +81,52 @@ export default function AICoachPage() {
     sendMessage(input);
   }
 
+  async function handleClearConfirmed() {
+    setClearing(true);
+    try {
+      await clearChatHistory();
+      setMessages([]);
+      setClearConfirm(false);
+    } finally {
+      setClearing(false);
+    }
+  }
+
+  function exportConversation() {
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10);
+    const dateLabel = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const header = `Studifly AI Coach — Conversation exported on ${dateLabel}\n\n`;
+    const body = messages.map((m, i) => {
+      const prefix = m.role === 'user' ? 'You' : 'AI Coach';
+      const line = `${prefix}: ${m.content}`;
+      const addBlank = m.role === 'assistant' && i < messages.length - 1;
+      return addBlank ? line + '\n' : line;
+    }).join('\n');
+    const blob = new Blob([header + body], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `studifly-ai-coach-${dateStr}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleCopy(index, content) {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(idx => idx === index ? null : idx), 1500);
+    } catch {
+      // clipboard not available — silently fail
+    }
+  }
+
   const bestHours = context?.bestHours?.length
     ? context.bestHours.join(', ')
     : '—';
+
+  const isLoading = historyLoading || ctxLoading;
 
   return (
     <div className={styles.page}>
@@ -118,8 +169,55 @@ export default function AICoachPage() {
 
       {/* Chat */}
       <Card className={styles.chatCard}>
+        <div className={styles.chatHeader}>
+          <span className={styles.chatTitle}>Conversation</span>
+          <div className={styles.chatHeaderActions}>
+            <button
+              className={styles.exportBtn}
+              onClick={exportConversation}
+              disabled={messages.length === 0}
+              title="Export conversation as .txt"
+            >
+              Export
+            </button>
+            {!clearConfirm ? (
+              <button
+                className={styles.newChatBtn}
+                onClick={() => setClearConfirm(true)}
+                disabled={messages.length === 0 || loading || clearing}
+              >
+                New conversation
+              </button>
+            ) : (
+              <div className={styles.clearConfirm}>
+                <span className={styles.clearConfirmText}>Clear all history?</span>
+                <button
+                  className={styles.clearConfirmYes}
+                  onClick={handleClearConfirmed}
+                  disabled={clearing}
+                >
+                  {clearing ? 'Clearing…' : 'Yes, clear'}
+                </button>
+                <button
+                  className={styles.clearConfirmCancel}
+                  onClick={() => setClearConfirm(false)}
+                  disabled={clearing}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className={styles.chatMessages}>
-          {messages.length === 0 && (
+          {isLoading && (
+            <div className={styles.emptyState}>
+              <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>
+            </div>
+          )}
+
+          {!isLoading && messages.length === 0 && (
             <div className={styles.emptyState}>
               <span className={styles.emptyIcon}>💬</span>
               <p>Ask me anything about your study habits.</p>
@@ -133,10 +231,23 @@ export default function AICoachPage() {
             </div>
           )}
 
-          {messages.map((m, i) => (
+          {!isLoading && messages.map((m, i) => (
             <div key={i} className={[styles.bubble, m.role === 'user' ? styles.user : styles.assistant].join(' ')}>
               {m.role === 'assistant' && <span className={styles.bubbleIcon}>🧠</span>}
-              <p className={styles.bubbleText}>{m.content}</p>
+              {m.role === 'assistant' ? (
+                <div className={styles.bubbleGroup}>
+                  <p className={styles.bubbleText}>{m.content}</p>
+                  <button
+                    className={[styles.copyBtn, copiedIndex === i ? styles.copyBtnDone : ''].join(' ')}
+                    onClick={() => handleCopy(i, m.content)}
+                    title="Copy message"
+                  >
+                    {copiedIndex === i ? '✓ Copied' : '📋 Copy'}
+                  </button>
+                </div>
+              ) : (
+                <p className={styles.bubbleText}>{m.content}</p>
+              )}
             </div>
           ))}
 
@@ -156,9 +267,9 @@ export default function AICoachPage() {
             placeholder="Ask your AI Coach…"
             value={input}
             onChange={e => setInput(e.target.value)}
-            disabled={loading}
+            disabled={loading || historyLoading}
           />
-          <button type="submit" className={styles.sendBtn} disabled={loading || !input.trim()}>
+          <button type="submit" className={styles.sendBtn} disabled={loading || historyLoading || !input.trim()}>
             Send
           </button>
         </form>

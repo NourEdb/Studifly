@@ -148,12 +148,31 @@ async function getContext(userId) {
   return getStudyContext(userId);
 }
 
-async function chat(userId, messages) {
-  const ctx = await getStudyContext(userId);
+async function getHistory(userId) {
+  return db.all(
+    'SELECT role, content, created_at FROM ai_coach_messages WHERE user_id = ? ORDER BY created_at ASC',
+    [userId]
+  );
+}
+
+async function getRecentContext(userId, limit = 15) {
+  const rows = await db.all(
+    'SELECT role, content FROM ai_coach_messages WHERE user_id = ? ORDER BY created_at DESC LIMIT ?',
+    [userId, limit]
+  );
+  return rows.reverse();
+}
+
+async function chat(userId, newUserMessage) {
+  const [ctx, recentContext] = await Promise.all([
+    getStudyContext(userId),
+    getRecentContext(userId, 15),
+  ]);
 
   const groqMessages = [
     { role: 'system', content: buildSystemPrompt(ctx) },
-    ...messages,
+    ...recentContext,
+    { role: 'user', content: newUserMessage },
   ];
 
   const completion = await groq.chat.completions.create({
@@ -162,7 +181,19 @@ async function chat(userId, messages) {
     max_tokens: 300,
   });
 
-  return { reply: completion.choices[0].message.content };
+  const reply = completion.choices[0].message.content;
+
+  await db.run(
+    'INSERT INTO ai_coach_messages (user_id, role, content) VALUES (?, ?, ?), (?, ?, ?)',
+    [userId, 'user', newUserMessage, userId, 'assistant', reply]
+  );
+
+  return { reply };
 }
 
-module.exports = { getContext, chat };
+async function clearHistory(userId) {
+  await db.run('DELETE FROM ai_coach_messages WHERE user_id = ?', [userId]);
+  return { ok: true };
+}
+
+module.exports = { getContext, getHistory, chat, clearHistory };

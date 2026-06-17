@@ -4,7 +4,9 @@ const ctrl = require('../controllers/ai-coach.controller');
 
 router.use(auth);
 
-router.get('/context', ctrl.getContext);
-router.post('/chat', ctrl.chat);
+router.get('/context',  ctrl.getContext);
+router.get('/history',  ctrl.getHistory);
+router.post('/chat',    ctrl.chat);
+router.delete('/history', ctrl.clearHistory);
 
 module.exports = router;

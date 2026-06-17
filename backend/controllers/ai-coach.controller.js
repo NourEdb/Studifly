@@ -8,13 +8,22 @@ const getContext = async (req, res, next) => {
   }
 };
 
+const getHistory = async (req, res, next) => {
+  try {
+    const messages = await svc.getHistory(req.user.id);
+    res.json({ messages });
+  } catch (e) {
+    next(e);
+  }
+};
+
 const chat = async (req, res, next) => {
   try {
-    const { messages } = req.body;
-    if (!Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: 'messages array required' });
+    const { message } = req.body;
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({ error: 'message string required' });
     }
-    res.json(await svc.chat(req.user.id, messages));
+    res.json(await svc.chat(req.user.id, message.trim()));
   } catch (e) {
     console.error('[AI Coach] chat failed:');
     console.error('  message :', e.message);
@@ -25,4 +34,12 @@ const chat = async (req, res, next) => {
   }
 };
 
-module.exports = { getContext, chat };
+const clearHistory = async (req, res, next) => {
+  try {
+    res.json(await svc.clearHistory(req.user.id));
+  } catch (e) {
+    next(e);
+  }
+};
+
+module.exports = { getContext, getHistory, chat, clearHistory };
