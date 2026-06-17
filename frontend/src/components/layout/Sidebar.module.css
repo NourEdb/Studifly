@@ -11,7 +11,7 @@
   top: 0;
   height: 100vh;
 }
-.brand { text-align: center; padding: 8px 0 24px; }
+.brand { text-align: center; padding: 8px 0 16px; }
 .logoImg {
   width: 100px;
   height: 100px;
@@ -21,18 +21,19 @@
 }
 .tagline { font-size: 0.75rem; color: var(--color-blue); font-weight: 500; margin-top: 4px; }
 
-.nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.nav { display: flex; flex-direction: column; gap: 4px; flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
 .link {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px;
+  border-left: 3px solid transparent;
   border-radius: var(--radius-md);
   font-weight: 500;
   color: var(--color-text-muted);
   transition: all 0.15s;
   position: relative;
 }
-.link:hover { background: var(--color-bg); color: var(--color-text); }
-.link.active { background: var(--color-purple-tint); color: var(--color-purple); font-weight: 600; }
+.link:hover { background: var(--color-purple-tint); color: var(--color-text); }
+.link.active { background: var(--color-purple-tint); color: var(--color-purple); font-weight: 600; border-left-color: var(--color-purple); }
 .icon { font-size: 1.1rem; width: 22px; text-align: center; }
 .timerDot {
   width: 7px; height: 7px;
@@ -46,8 +47,8 @@
   50% { opacity: 0.4; }
 }
 
-.bottom { border-top: 1px solid var(--color-border); padding-top: 16px; }
-.user { display: flex; align-items: center; gap: 10px; padding: 6px 12px 10px; }
+.bottom { flex-shrink: 0; border-top: 1px solid var(--color-border); padding-top: 16px; }
+.user { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
 .avatar {
   width: 30px; height: 30px; border-radius: 50%;
   background: var(--color-purple); color: #fff;
@@ -58,7 +59,7 @@
 .logout {
   width: 100%; background: none; border: none;
   color: var(--color-text-muted); font-size: 0.8125rem;
-  padding: 8px 12px; text-align: left; border-radius: var(--radius-sm);
+  padding: 8px 12px; text-align: left; border-radius: var(--radius-md);
   transition: all 0.15s;
 }
 .logout:hover { background: var(--color-error-tint); color: var(--color-error); }
@@ -66,8 +67,8 @@
 .themeToggle {
   width: 100%;
   background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border: none;
+  border-radius: var(--radius-md);
   color: var(--color-text-muted);
   font-size: 0.8125rem;
   padding: 8px 12px;
@@ -75,7 +76,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   transition: background 0.15s, color 0.15s;
 }
-.themeToggle:hover { background: var(--color-purple-tint); color: var(--color-purple); border-color: var(--color-purple); }
+.themeToggle:hover { background: var(--color-purple-tint); color: var(--color-purple); }
