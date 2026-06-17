@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import confetti from 'canvas-confetti';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
+import XpToast from '../ui/XpToast';
 import { reflectSession } from '../../api/sessions.api';
 import styles from './PostSessionModal.module.css';
 
@@ -49,7 +51,19 @@ export default function PostSessionModal({ session, onClose, onDone }) {
         task_marked_done:         markDone ? 1 : 0,
         resume_later:             continueSession,
       });
-      toast.success('Reflection saved');
+
+      if (markDone) {
+        confetti({
+          particleCount: 60,
+          spread: 65,
+          origin: { y: 0.6 },
+          colors: ['#6C4DC4', '#a78bfa', '#F5C842'],
+        });
+        toast.custom(t => <XpToast visible={t.visible} />, { duration: 3000 });
+      } else {
+        toast.success('Reflection saved');
+      }
+
       onDone?.({ continueSession });
     } catch {
       toast.error('Failed to save reflection');
