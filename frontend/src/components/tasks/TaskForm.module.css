@@ -13,3 +13,16 @@
 .field select:focus { border-color: var(--color-purple); }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+.customInput {
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  width: 100%;
+}
+.customInput:focus { border-color: var(--color-purple); }
+.error { font-size: 0.78rem; color: var(--color-error); }

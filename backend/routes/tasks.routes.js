@@ -6,10 +6,11 @@ const ctrl = require('../controllers/tasks.controller');
 
 router.use(auth);
 
+router.get('/custom-activity-types', ctrl.getCustomActivityTypes);
 router.get('/', ctrl.getAll);
 router.post('/',
   body('name').trim().notEmpty(),
-  body('activity_type').isIn(['reading', 'practice', 'watching', 'other']),
+  body('activity_type').trim().notEmpty(),
   validate,
   ctrl.create
 );

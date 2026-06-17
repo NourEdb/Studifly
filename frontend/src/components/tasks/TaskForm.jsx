@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import { getCustomActivityTypes } from '../../api/tasks.api';
 import styles from './TaskForm.module.css';
+
+const BUILT_IN_ACTIVITY_TYPES = new Set(['reading', 'practice', 'watching', 'other']);
 
 const ACTIVITY_TYPES = ['reading', 'practice', 'watching', 'other'];
 
@@ -19,28 +22,57 @@ function hhmmToMins(hhmm) {
   return (h || 0) * 60 + (m || 0);
 }
 
+function initForm(initial) {
+  const rawType = initial?.activity_type || 'reading';
+  const isCustom = initial && !BUILT_IN_ACTIVITY_TYPES.has(rawType);
+  return {
+    name:          initial?.name || '',
+    course_id:     initial?.course_id || '',
+    activity_type: isCustom ? '__custom__' : rawType,
+    customType:    isCustom ? rawType : '',
+    planned_time:  minsToHHMM(initial?.planned_time),
+    due_date:      initial?.due_date || '',
+    status:        initial?.status || 'pending',
+  };
+}
+
 export default function TaskForm({ initial, courses, onSave, onClose }) {
-  const [form, setForm] = useState({
-    name: initial?.name || '',
-    course_id: initial?.course_id || '',
-    activity_type: initial?.activity_type || 'reading',
-    planned_time: minsToHHMM(initial?.planned_time),
-    due_date: initial?.due_date || '',
-    status: initial?.status || 'pending',
-  });
-  const [loading, setLoading] = useState(false);
+  const [form, setForm]               = useState(() => initForm(initial));
+  const [customTypes, setCustomTypes] = useState([]);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState('');
+
+  useEffect(() => {
+    getCustomActivityTypes()
+      .then(types => {
+        setCustomTypes(types);
+        setForm(prev => {
+          if (prev.activity_type === '__custom__' && types.includes(prev.customType)) {
+            return { ...prev, activity_type: prev.customType, customType: '' };
+          }
+          return prev;
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
 
   async function handleSubmit(e) {
     e.preventDefault();
+    const finalType = form.activity_type === '__custom__'
+      ? form.customType.trim()
+      : form.activity_type;
+    if (!finalType) { setError('Please enter a custom activity type'); return; }
+    setError('');
     setLoading(true);
     try {
       await onSave({
         ...form,
-        course_id: form.course_id || null,
-        planned_time: hhmmToMins(form.planned_time),
-        due_date: form.due_date || null,
+        activity_type: finalType,
+        course_id:     form.course_id || null,
+        planned_time:  hhmmToMins(form.planned_time),
+        due_date:      form.due_date || null,
       });
       onClose();
     } finally {
@@ -71,9 +103,31 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
         <div className={styles.field}>
           <label htmlFor="task-type">Activity type</label>
           <select id="task-type" value={form.activity_type} onChange={e => set('activity_type', e.target.value)}>
-            {ACTIVITY_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+            {ACTIVITY_TYPES.map(t => (
+              <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+            ))}
+            {customTypes.map(t => (
+              <option key={`custom-${t}`} value={t}>{t}</option>
+            ))}
+            <option value="__custom__">Other (custom)…</option>
           </select>
         </div>
+
+        {form.activity_type === '__custom__' && (
+          <div className={styles.field}>
+            <label htmlFor="task-custom-type">Custom activity type</label>
+            <input
+              id="task-custom-type"
+              className={styles.customInput}
+              value={form.customType}
+              onChange={e => { set('customType', e.target.value); setError(''); }}
+              placeholder="e.g. Writing, Drawing, Research…"
+              maxLength={50}
+              autoFocus
+            />
+            {error && <span className={styles.error}>{error}</span>}
+          </div>
+        )}
 
         <div className={styles.row}>
           <Input

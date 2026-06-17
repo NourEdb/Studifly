@@ -15,6 +15,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/005_resume_later.sql'),
   path.join(__dirname, 'migrations/006_session_status_nullable.sql'),
   path.join(__dirname, 'migrations/007_events_type_open.sql'),
+  path.join(__dirname, 'migrations/008_tasks_activity_type_open.sql'),
 ];
 
 async function initDb() {

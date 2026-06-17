@@ -2,6 +2,19 @@ const db = require('../database/db');
 const { getISOWeekBounds } = require('../utils/dateHelpers');
 const gamification = require('./gamification.service');
 
+const BUILT_IN_ACTIVITY_TYPES = ['reading', 'practice', 'watching', 'other'];
+
+async function getCustomActivityTypes(userId) {
+  const placeholders = BUILT_IN_ACTIVITY_TYPES.map(() => '?').join(', ');
+  const rows = await db.all(
+    `SELECT DISTINCT activity_type FROM tasks
+     WHERE user_id = ? AND activity_type NOT IN (${placeholders})
+     ORDER BY activity_type ASC`,
+    [userId, ...BUILT_IN_ACTIVITY_TYPES]
+  );
+  return rows.map(r => r.activity_type);
+}
+
 async function getOne(userId, id) {
   const task = await db.get(
     `SELECT t.*, c.name as course_name, c.color as course_color
@@ -84,4 +97,4 @@ async function remove(userId, id) {
   await db.run('DELETE FROM tasks WHERE id = ?', [id]);
 }
 
-module.exports = { getAll, getOne, create, update, updateStatus, remove };
+module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove };
