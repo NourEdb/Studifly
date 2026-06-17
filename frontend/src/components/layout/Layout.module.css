@@ -13,4 +13,4 @@
   z-index: 10;
 }
 .pageTitle { font-size: 1.125rem; font-weight: 700; }
-.content { flex: 1; padding: 28px; overflow-y: auto; }
+.content { flex: 1; padding: 28px 28px 56px; overflow-y: auto; }

@@ -10,6 +10,7 @@ import TrackerPage from './pages/TrackerPage';
 import PlannerPage from './pages/PlannerPage';
 import AchievementsPage from './pages/AchievementsPage';
 import AICoachPage from './pages/AICoachPage';
+import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 function ProtectedRoute({ children }) {
@@ -33,6 +34,7 @@ export default function App() {
         <Route path="planner" element={<PlannerPage />} />
         <Route path="achievements" element={<AchievementsPage />} />
         <Route path="ai-coach" element={<AICoachPage />} />
+        <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

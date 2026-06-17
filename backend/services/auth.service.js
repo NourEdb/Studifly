@@ -32,15 +32,56 @@ async function login({ username, password }) {
 }
 
 async function getMe(userId) {
-  return db.get('SELECT id, username, email, created_at FROM users WHERE id = ?', [userId]);
+  return db.get(
+    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, created_at FROM users WHERE id = ?',
+    [userId]
+  );
 }
 
-async function updateMe(userId, { username, email }) {
-  await db.run(
-    'UPDATE users SET username = COALESCE(?, username), email = COALESCE(?, email) WHERE id = ?',
-    [username || null, email || null, userId]
-  );
+async function updateMe(userId, body) {
+  const fields = [];
+  const params = [];
+
+  if ('username' in body && body.username)        { fields.push('username = ?');                params.push(body.username); }
+  if ('email' in body && body.email)              { fields.push('email = ?');                   params.push(body.email); }
+  if ('display_name' in body)                     { fields.push('display_name = ?');            params.push(body.display_name || null); }
+  if ('weekly_goal_hours' in body)                { fields.push('weekly_goal_hours = ?');       params.push(parseInt(body.weekly_goal_hours, 10) || 10); }
+  if ('email_reminders_enabled' in body)          { fields.push('email_reminders_enabled = ?'); params.push(!!body.email_reminders_enabled); }
+
+  if (fields.length) {
+    params.push(userId);
+    await db.run(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
+  }
   return getMe(userId);
 }
 
-module.exports = { register, login, getMe, updateMe };
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await db.get('SELECT password_hash FROM users WHERE id = ?', [userId]);
+  if (!user) { const e = new Error('User not found'); e.status = 404; throw e; }
+  if (!bcrypt.compareSync(currentPassword, user.password_hash)) {
+    const err = new Error('Current password is incorrect');
+    err.status = 400;
+    throw err;
+  }
+  if (!newPassword || newPassword.length < 8) {
+    const err = new Error('New password must be at least 8 characters');
+    err.status = 400;
+    throw err;
+  }
+  await db.run('UPDATE users SET password_hash = ? WHERE id = ?', [bcrypt.hashSync(newPassword, 10), userId]);
+  return { ok: true };
+}
+
+async function deleteAccount(userId, { password }) {
+  const user = await db.get('SELECT password_hash FROM users WHERE id = ?', [userId]);
+  if (!user) { const e = new Error('User not found'); e.status = 404; throw e; }
+  if (!bcrypt.compareSync(password, user.password_hash)) {
+    const err = new Error('Password is incorrect');
+    err.status = 400;
+    throw err;
+  }
+  await db.run('DELETE FROM users WHERE id = ?', [userId]);
+  return { ok: true };
+}
+
+module.exports = { register, login, getMe, updateMe, changePassword, deleteAccount };

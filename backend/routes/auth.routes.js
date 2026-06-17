@@ -22,4 +22,13 @@ router.post('/login',
 router.get('/me', auth, ctrl.meHandler);
 router.put('/me', auth, ctrl.updateMeHandler);
 
+router.put('/change-password', auth,
+  body('currentPassword').notEmpty(),
+  body('newPassword').isLength({ min: 8 }),
+  validate,
+  ctrl.changePasswordHandler
+);
+
+router.delete('/me', auth, ctrl.deleteAccountHandler);
+
 module.exports = router;

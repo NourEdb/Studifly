@@ -12,6 +12,7 @@ const dashboardRoutes = require('./routes/dashboard.routes');
 const gamificationRoutes = require('./routes/gamification.routes');
 const aiCoachRoutes      = require('./routes/ai-coach.routes');
 const eventsRoutes       = require('./routes/events.routes');
+const exportRoutes       = require('./routes/export.routes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/gamification', gamificationRoutes);
 app.use('/api/ai-coach',    aiCoachRoutes);
 app.use('/api/events',      eventsRoutes);
+app.use('/api/export',      exportRoutes);
 
 app.use(errorHandler);
 

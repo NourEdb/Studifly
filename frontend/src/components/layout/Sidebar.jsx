@@ -13,6 +13,7 @@ const NAV = [
   { to: '/planner', icon: '📅', label: 'Planner' },
   { to: '/achievements', icon: '🏆', label: 'Achievements' },
   { to: '/ai-coach',     icon: '🧠', label: 'AI Coach' },
+  { to: '/settings',    icon: '⚙️', label: 'Settings' },
 ];
 
 export default function Sidebar() {

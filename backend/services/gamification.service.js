@@ -11,8 +11,6 @@ const BADGE_DEFS = [
   { key: 'early_bird',    name: 'Early Bird',    icon: '🐦', description: 'Study before 8 AM' },
 ];
 
-const WEEKLY_GOAL_SECONDS = 36000; // 10 hours
-
 function computeLevel(totalXp) {
   const level = Math.floor(totalXp / XP_PER_LEVEL) + 1;
   return {
@@ -62,15 +60,18 @@ async function checkWeekStreak(userId) {
 }
 
 async function checkWeeklyGoal(userId) {
-  // Use the same ISO week boundaries as the rest of the codebase (UTC-based).
   const { start, end } = getISOWeekBounds(currentISOWeek());
-  const row = await db.get(
-    `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds
-     FROM study_sessions
-     WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL`,
-    [userId, start, end]
-  );
-  if ((row?.total_seconds || 0) >= WEEKLY_GOAL_SECONDS) {
+  const [row, userRow] = await Promise.all([
+    db.get(
+      `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds
+       FROM study_sessions
+       WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL`,
+      [userId, start, end]
+    ),
+    db.get('SELECT weekly_goal_hours FROM users WHERE id = ?', [userId]),
+  ]);
+  const goalSeconds = (userRow?.weekly_goal_hours || 10) * 3600;
+  if ((row?.total_seconds || 0) >= goalSeconds) {
     const week = currentISOWeek();
     await awardXP(userId, 100, 'weekly_goal', week);
     await awardBadge(userId, 'goal_crusher');

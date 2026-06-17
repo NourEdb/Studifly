@@ -17,6 +17,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/007_events_type_open.sql'),
   path.join(__dirname, 'migrations/008_tasks_activity_type_open.sql'),
   path.join(__dirname, 'migrations/009_reminder_sent.sql'),
+  path.join(__dirname, 'migrations/010_user_settings.sql'),
 ];
 
 async function initDb() {
