@@ -53,6 +53,9 @@ export default function LoginForm() {
             onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
             required
           />
+          <Link to="/forgot-password" style={{ fontSize: '0.8125rem', color: 'var(--color-purple)', textAlign: 'right', marginTop: '-8px' }}>
+            Forgot password?
+          </Link>
           <Button type="submit" fullWidth disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </Button>

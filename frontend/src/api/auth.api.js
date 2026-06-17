@@ -6,6 +6,8 @@ export const getMe = () => client.get('/auth/me').then(r => r.data);
 export const updateMe = data => client.put('/auth/me', data).then(r => r.data);
 export const changePassword = data => client.put('/auth/change-password', data).then(r => r.data);
 export const deleteAccount = data => client.delete('/auth/me', { data }).then(r => r.data);
+export const forgotPassword = email => client.post('/auth/forgot-password', { email }).then(r => r.data);
+export const resetPassword = (token, newPassword) => client.post('/auth/reset-password', { token, newPassword }).then(r => r.data);
 
 export function downloadCsv(type) {
   const token = localStorage.getItem('token');

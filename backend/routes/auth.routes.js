@@ -31,4 +31,17 @@ router.put('/change-password', auth,
 
 router.delete('/me', auth, ctrl.deleteAccountHandler);
 
+router.post('/forgot-password',
+  body('email').isEmail().normalizeEmail(),
+  validate,
+  ctrl.forgotPasswordHandler
+);
+
+router.post('/reset-password',
+  body('token').notEmpty(),
+  body('newPassword').isLength({ min: 8 }),
+  validate,
+  ctrl.resetPasswordHandler
+);
+
 module.exports = router;

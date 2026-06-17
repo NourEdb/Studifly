@@ -24,4 +24,16 @@ const deleteAccountHandler = async (req, res, next) => {
   try { res.json(await authService.deleteAccount(req.user.id, req.body)); } catch (e) { next(e); }
 };
 
-module.exports = { registerHandler, loginHandler, meHandler, updateMeHandler, changePasswordHandler, deleteAccountHandler };
+const forgotPasswordHandler = async (req, res, next) => {
+  try { res.json(await authService.requestPasswordReset(req.body.email)); } catch (e) { next(e); }
+};
+
+const resetPasswordHandler = async (req, res, next) => {
+  try { res.json(await authService.resetPassword(req.body.token, req.body.newPassword)); } catch (e) { next(e); }
+};
+
+module.exports = {
+  registerHandler, loginHandler, meHandler, updateMeHandler,
+  changePasswordHandler, deleteAccountHandler,
+  forgotPasswordHandler, resetPasswordHandler,
+};

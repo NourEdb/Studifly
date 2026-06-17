@@ -1,6 +1,12 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../database/db');
+const { sendPasswordResetEmail } = require('./email.service');
+
+function sha256(str) {
+  return crypto.createHash('sha256').update(str).digest('hex');
+}
 
 async function register({ username, email, password }) {
   const existing = await db.get('SELECT id FROM users WHERE username = ? OR email = ?', [username, email]);
@@ -84,4 +90,55 @@ async function deleteAccount(userId, { password }) {
   return { ok: true };
 }
 
-module.exports = { register, login, getMe, updateMe, changePassword, deleteAccount };
+async function requestPasswordReset(email) {
+  const user = await db.get('SELECT id, email FROM users WHERE email = ?', [email]);
+
+  if (!user) {
+    // Timing-safe: delay to match the time taken when a user is found
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 200));
+    return { ok: true };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = sha256(rawToken);
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.run(
+    'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+    [hashedToken, expires.toISOString(), user.id]
+  );
+
+  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${rawToken}`;
+  await sendPasswordResetEmail(user.email, resetUrl);
+
+  return { ok: true };
+}
+
+async function resetPassword(token, newPassword) {
+  if (!newPassword || newPassword.length < 8) {
+    const err = new Error('Password must be at least 8 characters');
+    err.status = 400;
+    throw err;
+  }
+
+  const hashedToken = sha256(token);
+  const user = await db.get(
+    "SELECT id FROM users WHERE reset_token = ? AND reset_token_expires > NOW()",
+    [hashedToken]
+  );
+
+  if (!user) {
+    const err = new Error('Reset link is invalid or has expired');
+    err.status = 400;
+    throw err;
+  }
+
+  await db.run(
+    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+    [bcrypt.hashSync(newPassword, 10), user.id]
+  );
+
+  return { ok: true };
+}
+
+module.exports = { register, login, getMe, updateMe, changePassword, deleteAccount, requestPasswordReset, resetPassword };
