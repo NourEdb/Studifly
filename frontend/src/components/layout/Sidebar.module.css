@@ -56,6 +56,7 @@
   font-size: 0.8125rem; font-weight: 700; flex-shrink: 0;
 }
 .username { font-size: 0.8125rem; font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pinnedBadge { font-size: 0.9rem; margin-left: 4px; line-height: 1; flex-shrink: 0; cursor: default; }
 .logout {
   width: 100%; background: none; border: none;
   color: var(--color-text-muted); font-size: 0.8125rem;

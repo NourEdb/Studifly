@@ -5,6 +5,14 @@ import { useTheme } from '../../context/ThemeContext';
 import logo from '../../assets/studifly-logo.png';
 import styles from './Sidebar.module.css';
 
+const BADGE_ICONS = {
+  first_task:   { icon: '🎯', name: 'First Task' },
+  week_streak:  { icon: '🔥', name: 'Week Streak' },
+  goal_crusher: { icon: '💪', name: 'Goal Crusher' },
+  night_owl:    { icon: '🦉', name: 'Night Owl' },
+  early_bird:   { icon: '🐦', name: 'Early Bird' },
+};
+
 const NAV = [
   { to: '/dashboard', icon: '📊', label: 'Dashboard' },
   { to: '/courses', icon: '📚', label: 'Courses' },
@@ -56,6 +64,11 @@ export default function Sidebar() {
         <div className={styles.user}>
           <div className={styles.avatar}>{user?.username?.[0]?.toUpperCase()}</div>
           <span className={styles.username}>{user?.username}</span>
+          {user?.pinned_badge && BADGE_ICONS[user.pinned_badge] && (
+            <span className={styles.pinnedBadge} title={BADGE_ICONS[user.pinned_badge].name}>
+              {BADGE_ICONS[user.pinned_badge].icon}
+            </span>
+          )}
         </div>
         <button className={styles.logout} onClick={handleLogout}>Sign out</button>
       </div>

@@ -88,3 +88,38 @@
 .badgeName { font-size: 0.8125rem; font-weight: 600; margin: 0; }
 
 .badgeDesc { font-size: 0.75rem; color: var(--color-text-muted); margin: 0; }
+
+.pinned {
+  border-color: var(--color-purple) !important;
+  background: var(--color-purple-tint);
+  box-shadow: 0 0 0 3px rgba(108, 77, 196, 0.12);
+}
+
+.pinBtn {
+  margin-top: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.pinBtn:hover:not(:disabled) {
+  border-color: var(--color-purple);
+  color: var(--color-purple);
+}
+
+.pinBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pinBtnActive {
+  border-color: var(--color-purple);
+  color: var(--color-purple);
+  background: var(--color-purple-tint);
+}

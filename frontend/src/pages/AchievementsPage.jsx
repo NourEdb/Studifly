@@ -1,3 +1,6 @@
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { updateMe } from '../api/auth.api';
 import useGamification from '../hooks/useGamification';
 import Card from '../components/ui/Card';
 import ProgressBar from '../components/ui/ProgressBar';
@@ -5,6 +8,20 @@ import styles from './AchievementsPage.module.css';
 
 export default function AchievementsPage() {
   const { profile, loading } = useGamification();
+  const { user, refreshUser } = useAuth();
+  const [pinning, setPinning] = useState(false);
+
+  async function handlePin(badgeKey) {
+    if (pinning) return;
+    const isCurrentlyPinned = user?.pinned_badge === badgeKey;
+    setPinning(true);
+    try {
+      await updateMe({ pinned_badge: isCurrentlyPinned ? null : badgeKey });
+      await refreshUser();
+    } finally {
+      setPinning(false);
+    }
+  }
 
   if (loading || !profile) {
     return <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>;
@@ -41,13 +58,24 @@ export default function AchievementsPage() {
         <section>
           <h2 className={styles.sectionTitle}>Earned badges</h2>
           <div className={styles.badgeGrid}>
-            {earned.map(b => (
-              <div key={b.key} className={styles.badge}>
-                <span className={styles.badgeIcon}>{b.icon}</span>
-                <strong className={styles.badgeName}>{b.name}</strong>
-                <p className={styles.badgeDesc}>{b.description}</p>
-              </div>
-            ))}
+            {earned.map(b => {
+              const isPinned = user?.pinned_badge === b.key;
+              return (
+                <div key={b.key} className={[styles.badge, isPinned && styles.pinned].filter(Boolean).join(' ')}>
+                  <span className={styles.badgeIcon}>{b.icon}</span>
+                  <strong className={styles.badgeName}>{b.name}</strong>
+                  <p className={styles.badgeDesc}>{b.description}</p>
+                  <button
+                    className={[styles.pinBtn, isPinned && styles.pinBtnActive].filter(Boolean).join(' ')}
+                    onClick={() => handlePin(b.key)}
+                    disabled={pinning}
+                    title={isPinned ? 'Unpin badge from sidebar' : 'Pin badge to sidebar'}
+                  >
+                    📌 {isPinned ? 'Pinned' : 'Pin'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

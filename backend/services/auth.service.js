@@ -39,7 +39,7 @@ async function login({ username, password }) {
 
 async function getMe(userId) {
   return db.get(
-    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, created_at FROM users WHERE id = ?',
+    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, pinned_badge, created_at FROM users WHERE id = ?',
     [userId]
   );
 }
@@ -53,6 +53,25 @@ async function updateMe(userId, body) {
   if ('display_name' in body)                     { fields.push('display_name = ?');            params.push(body.display_name || null); }
   if ('weekly_goal_hours' in body)                { fields.push('weekly_goal_hours = ?');       params.push(parseInt(body.weekly_goal_hours, 10) || 10); }
   if ('email_reminders_enabled' in body)          { fields.push('email_reminders_enabled = ?'); params.push(!!body.email_reminders_enabled); }
+
+  if ('pinned_badge' in body) {
+    if (body.pinned_badge) {
+      const earned = await db.get(
+        'SELECT 1 FROM user_badges WHERE user_id = ? AND badge_key = ?',
+        [userId, body.pinned_badge]
+      );
+      if (!earned) {
+        const err = new Error('Badge not earned');
+        err.status = 400;
+        throw err;
+      }
+      fields.push('pinned_badge = ?');
+      params.push(body.pinned_badge);
+    } else {
+      fields.push('pinned_badge = ?');
+      params.push(null);
+    }
+  }
 
   if (fields.length) {
     params.push(userId);
