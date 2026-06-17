@@ -2,9 +2,11 @@ const svc = require('../services/events.service');
 const { sendReminderEmail } = require('../services/email.service');
 const db = require('../database/db');
 
-const getAll = async (req, res, next) => { try { res.json(await svc.getAll(req.user.id)); } catch (e) { next(e); } };
-const create = async (req, res, next) => { try { res.status(201).json(await svc.create(req.user.id, req.body)); } catch (e) { next(e); } };
-const remove = async (req, res, next) => { try { await svc.remove(req.user.id, req.params.id); res.status(204).end(); } catch (e) { next(e); } };
+const getAll        = async (req, res, next) => { try { res.json(await svc.getAll(req.user.id)); } catch (e) { next(e); } };
+const getCustomTypes = async (req, res, next) => { try { res.json(await svc.getCustomTypes(req.user.id)); } catch (e) { next(e); } };
+const create  = async (req, res, next) => { try { res.status(201).json(await svc.create(req.user.id, req.body)); } catch (e) { next(e); } };
+const update  = async (req, res, next) => { try { res.json(await svc.update(req.user.id, req.params.id, req.body)); } catch (e) { next(e); } };
+const remove  = async (req, res, next) => { try { await svc.remove(req.user.id, req.params.id); res.status(204).end(); } catch (e) { next(e); } };
 
 const testEmail = async (req, res, next) => {
   try {
@@ -24,4 +26,4 @@ const testEmail = async (req, res, next) => {
   } catch (e) { next(e); }
 };
 
-module.exports = { getAll, create, remove, testEmail };
+module.exports = { getAll, getCustomTypes, create, update, remove, testEmail };

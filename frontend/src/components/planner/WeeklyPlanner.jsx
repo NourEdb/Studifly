@@ -4,7 +4,7 @@ import WeekNav from './WeekNav';
 import PlannerDayColumn from './PlannerDayColumn';
 import styles from './WeeklyPlanner.module.css';
 
-export default function WeeklyPlanner({ tasks, sessions, events, onAddEvent, onDeleteEvent }) {
+export default function WeeklyPlanner({ tasks, sessions, events, onAddEvent, onEditEvent, onDeleteEvent }) {
   const [weekStart, setWeekStart] = useState(() => startOfISOWeek(new Date()));
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
@@ -26,6 +26,7 @@ export default function WeeklyPlanner({ tasks, sessions, events, onAddEvent, onD
             sessions={sessions}
             events={events}
             onAddEvent={onAddEvent}
+            onEditEvent={onEditEvent}
             onDeleteEvent={onDeleteEvent}
           />
         ))}

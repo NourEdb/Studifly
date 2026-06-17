@@ -6,8 +6,9 @@ import EventCard from './EventCard';
 import EventFormModal from './EventFormModal';
 import styles from './PlannerDayColumn.module.css';
 
-export default function PlannerDayColumn({ date, tasks, sessions, events, onAddEvent, onDeleteEvent }) {
-  const [showModal, setShowModal] = useState(false);
+export default function PlannerDayColumn({ date, tasks, sessions, events, onAddEvent, onEditEvent, onDeleteEvent }) {
+  const [showModal,    setShowModal]    = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
   const dayStr = format(date, 'yyyy-MM-dd');
   const dayTasks    = tasks.filter(t => t.due_date === dayStr);
   const daySessions = sessions.filter(s => s.start_time?.startsWith(dayStr));
@@ -28,7 +29,7 @@ export default function PlannerDayColumn({ date, tasks, sessions, events, onAddE
         </div>
         <div className={styles.body}>
           {dayEvents.map(ev => (
-            <EventCard key={`ev-${ev.id}`} event={ev} onDelete={onDeleteEvent} />
+            <EventCard key={`ev-${ev.id}`} event={ev} onEdit={setEditingEvent} onDelete={onDeleteEvent} />
           ))}
           {dayTasks.length === 0 && dayEvents.length === 0 ? (
             <p className={styles.noTasks}>—</p>
@@ -55,6 +56,15 @@ export default function PlannerDayColumn({ date, tasks, sessions, events, onAddE
           date={dayStr}
           onSave={onAddEvent}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {editingEvent && (
+        <EventFormModal
+          date={editingEvent.event_date}
+          event={editingEvent}
+          onSave={data => onEditEvent(editingEvent.id, data)}
+          onClose={() => setEditingEvent(null)}
         />
       )}
     </>

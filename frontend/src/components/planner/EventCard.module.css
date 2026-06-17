@@ -37,7 +37,7 @@
   color: var(--color-text-muted);
 }
 
-.del {
+.edit, .del {
   background: none;
   border: none;
   cursor: pointer;
@@ -47,4 +47,5 @@
   padding: 0 2px;
   flex-shrink: 0;
 }
-.del:hover { color: var(--color-error); }
+.edit:hover { color: var(--color-purple); }
+.del:hover  { color: var(--color-error); }
