@@ -71,6 +71,13 @@ export default function DashboardPage() {
           value={`${summary.completion_rate}%`}
           color="var(--color-blue)"
         />
+        <StatCard
+          icon="🔥"
+          label="Current streak"
+          value={`${summary.streak} day${summary.streak !== 1 ? 's' : ''}`}
+          sub={summary.streak === 0 ? 'Study today to start one!' : summary.streak >= 7 ? 'On fire! 🎉' : 'Keep it up!'}
+          color="var(--color-warning)"
+        />
         {summary.overdue_count > 0 && (
           <StatCard
             icon="⚠️"
