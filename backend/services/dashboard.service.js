@@ -39,10 +39,62 @@ async function getStreak(userId, tz = 'UTC') {
   return streak;
 }
 
+async function getPeerComparison(currentUserId, weekStart, weekEnd) {
+  const [weekRows, taskRows] = await Promise.all([
+    db.all(
+      `SELECT user_id, COALESCE(SUM(duration), 0)::int AS user_total
+       FROM study_sessions
+       WHERE user_id != ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL
+       GROUP BY user_id`,
+      [currentUserId, weekStart, weekEnd]
+    ),
+    db.all(
+      `SELECT user_id, status, COUNT(*)::int AS count
+       FROM tasks WHERE user_id != ?
+       GROUP BY user_id, status`,
+      [currentUserId]
+    ),
+  ]);
+
+  // Metric A: avg weekly seconds among active peers
+  const peer_count = weekRows.length;
+  const avg_weekly_seconds = peer_count > 0
+    ? Math.round(weekRows.reduce((s, r) => s + r.user_total, 0) / peer_count)
+    : null;
+
+  // Metric B: avg completion rate among peers with tasks
+  const userTaskMap = {};
+  for (const r of taskRows) {
+    if (!userTaskMap[r.user_id]) userTaskMap[r.user_id] = {};
+    userTaskMap[r.user_id][r.status] = r.count;
+  }
+  const peerRates = Object.values(userTaskMap)
+    .map(counts => {
+      const total = (counts.pending || 0) + (counts.in_progress || 0) + (counts.completed || 0);
+      return total > 0 ? (counts.completed || 0) / total : null;
+    })
+    .filter(r => r !== null);
+
+  const completion_peer_count = peerRates.length;
+  const avg_completion_rate = completion_peer_count > 0
+    ? Math.round(peerRates.reduce((s, r) => s + r, 0) / completion_peer_count * 100)
+    : null;
+
+  const enough_data = peer_count >= 3 && completion_peer_count >= 3;
+
+  return {
+    enough_data,
+    peer_count,
+    avg_weekly_seconds:   enough_data ? avg_weekly_seconds   : null,
+    completion_peer_count,
+    avg_completion_rate:  enough_data ? avg_completion_rate  : null,
+  };
+}
+
 async function getSummary(userId, tz = 'UTC') {
   const { start, end } = getISOWeekBounds(currentISOWeek());
 
-  const [hoursRow, taskCounts, overdueRow, streak] = await Promise.all([
+  const [hoursRow, taskCounts, overdueRow, streak, peers] = await Promise.all([
     db.get(
       'SELECT COALESCE(SUM(duration), 0) as total_seconds FROM study_sessions WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL',
       [userId, start, end]
@@ -56,6 +108,7 @@ async function getSummary(userId, tz = 'UTC') {
       [userId]
     ),
     getStreak(userId, tz),
+    getPeerComparison(userId, start, end),
   ]);
 
   const counts = { pending: 0, in_progress: 0, completed: 0 };
@@ -70,6 +123,7 @@ async function getSummary(userId, tz = 'UTC') {
     completion_rate: total > 0 ? Math.round((counts.completed / total) * 100) : 0,
     overdue_count: overdueRow.count,
     streak,
+    peers,
   };
 }
 
@@ -137,4 +191,4 @@ async function getCourseComparison(userId) {
   );
 }
 
-module.exports = { getSummary, getStreak, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison };
+module.exports = { getSummary, getStreak, getPeerComparison, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison };

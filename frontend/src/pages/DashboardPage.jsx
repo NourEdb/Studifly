@@ -11,6 +11,49 @@ import PredictionCard from '../components/dashboard/PredictionCard';
 import { generateDashboardPdf } from '../utils/generatePdf';
 import styles from './DashboardPage.module.css';
 
+function PeerBanner({ peers, weeklySeconds, completionRate }) {
+  if (!peers.enough_data) {
+    return (
+      <p className={styles.peerNote}>
+        📊 Not enough data from other students yet to compare — check back later.
+      </p>
+    );
+  }
+
+  const { avg_weekly_seconds, avg_completion_rate, peer_count } = peers;
+
+  let hoursMark, hoursClass;
+  if (!avg_weekly_seconds) {
+    hoursMark = 'right around average';
+    hoursClass = styles.peerNeutral;
+  } else {
+    const pct = Math.round(Math.abs(weeklySeconds - avg_weekly_seconds) / avg_weekly_seconds * 100);
+    if (pct <= 5) { hoursMark = 'right around average'; hoursClass = styles.peerNeutral; }
+    else if (weeklySeconds > avg_weekly_seconds) { hoursMark = `${pct}% more`; hoursClass = styles.peerUp; }
+    else { hoursMark = `${pct}% less`; hoursClass = styles.peerDown; }
+  }
+
+  let rateMark, rateClass;
+  const diff = completionRate - avg_completion_rate;
+  if (Math.abs(diff) <= 5) { rateMark = `on par (avg ${avg_completion_rate}%)`; rateClass = styles.peerNeutral; }
+  else if (diff > 0) { rateMark = `${Math.abs(diff)}% above avg (${avg_completion_rate}%)`; rateClass = styles.peerUp; }
+  else { rateMark = `${Math.abs(diff)}% below avg (${avg_completion_rate}%)`; rateClass = styles.peerDown; }
+
+  return (
+    <div className={styles.peerBanner}>
+      <span className={styles.peerStat}>
+        📊 This week you&apos;re studying{' '}
+        <span className={hoursClass}>{hoursMark}</span>
+        {' '}than {peer_count} active peers
+      </span>
+      <span className={styles.peerDivider} />
+      <span className={styles.peerStat}>
+        🎯 Task completion: <span className={rateClass}>{rateMark}</span>
+      </span>
+    </div>
+  );
+}
+
 function fmtHours(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -87,6 +130,8 @@ export default function DashboardPage() {
           />
         )}
       </div>
+
+      {summary.peers && <PeerBanner peers={summary.peers} weeklySeconds={summary.weekly_seconds} completionRate={summary.completion_rate} />}
 
       <PredictionCard prediction={prediction} />
 
