@@ -16,11 +16,6 @@ router.post('/',
 );
 router.get('/:id', ctrl.getOne);
 router.put('/:id', ctrl.update);
-router.patch('/:id/status',
-  body('status').isIn(['pending', 'in_progress', 'completed']),
-  validate,
-  ctrl.updateStatus
-);
 router.delete('/:id', ctrl.remove);
 
 module.exports = router;

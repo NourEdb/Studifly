@@ -2,10 +2,9 @@ const cron = require('node-cron');
 const db = require('../database/db');
 const { sendReminderEmail } = require('../services/email.service');
 
-// Returns tomorrow's date as YYYY-MM-DD in local time
-function tomorrowStr() {
+function dateStr(offsetDays = 0) {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() + offsetDays);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
@@ -13,33 +12,41 @@ function tomorrowStr() {
 }
 
 async function sendReminders() {
-  const tomorrow = tomorrowStr();
-  console.log(`[reminder-job] Checking events for ${tomorrow}…`);
+  const today    = dateStr(0);
+  const tomorrow = dateStr(1);
+
+  console.log(`[reminder-job] Running at ${new Date().toISOString()} — checking window ${today} → ${tomorrow}`);
 
   const rows = await db.all(
     `SELECT e.*, u.email
      FROM events e
      JOIN users u ON u.id = e.user_id
-     WHERE e.event_date = ?`,
-    [tomorrow]
+     WHERE e.reminder_sent = false
+       AND e.event_date >= ?
+       AND e.event_date <= ?`,
+    [today, tomorrow]
   );
 
   if (rows.length === 0) {
-    console.log('[reminder-job] No events tomorrow — nothing to send.');
+    console.log('[reminder-job] No pending reminders in window — nothing to send.');
     return;
   }
+
+  console.log(`[reminder-job] Found ${rows.length} event(s) needing reminders.`);
 
   let sent = 0;
   for (const event of rows) {
     try {
       await sendReminderEmail(event.email, event);
+      await db.run('UPDATE events SET reminder_sent = true WHERE id = ?', [event.id]);
       sent++;
-      console.log(`[reminder-job] Sent reminder to ${event.email} for "${event.title}"`);
+      console.log(`[reminder-job] ✓ Sent and marked — id=${event.id} "${event.title}" → ${event.email}`);
     } catch (err) {
-      console.error(`[reminder-job] Failed to send to ${event.email}:`, err.message);
+      console.error(`[reminder-job] ✗ Failed — id=${event.id} "${event.title}": ${err.message}`);
     }
   }
-  console.log(`[reminder-job] Done — ${sent}/${rows.length} emails sent.`);
+
+  console.log(`[reminder-job] Done — ${sent}/${rows.length} reminders sent.`);
 }
 
 function startReminderJob() {
@@ -48,12 +55,12 @@ function startReminderJob() {
     return;
   }
 
-  // Runs every day at 08:00 AM server local time
-  cron.schedule('0 8 * * *', () => {
+  // Runs every hour on the hour — catches missed runs within 1 hour of server restart
+  cron.schedule('0 * * * *', () => {
     sendReminders().catch(err => console.error('[reminder-job] Unexpected error:', err.message));
   });
 
-  console.log('[reminder-job] Scheduled: daily at 08:00 AM.');
+  console.log('[reminder-job] Scheduled: hourly. Window covers today + tomorrow (reminder_sent=false only).');
 }
 
-module.exports = { startReminderJob };
+module.exports = { startReminderJob, sendReminders };

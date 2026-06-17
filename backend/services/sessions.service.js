@@ -69,6 +69,14 @@ async function reflect(userId, id, data) {
     gamification.onTaskComplete(userId, session.task_id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
   }
 
+  // Partial answer nudges task to in_progress (never downgrades a completed task)
+  if (data.completion_answer === 'partially' && session.task_id && !data.task_marked_done) {
+    await db.run(
+      `UPDATE tasks SET status = 'in_progress' WHERE id = ? AND user_id = ? AND status <> 'completed'`,
+      [session.task_id, userId]
+    );
+  }
+
   return updated;
 }
 

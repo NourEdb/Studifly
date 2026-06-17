@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTasks, createTask, updateTask, updateTaskStatus, deleteTask } from '../api/tasks.api';
+import { getTasks, createTask, updateTask, deleteTask } from '../api/tasks.api';
 import toast from 'react-hot-toast';
 
 export default function useTasks(filters = {}) {
@@ -33,17 +33,10 @@ export default function useTasks(filters = {}) {
     return task;
   }
 
-  async function toggleStatus(id, currentStatus) {
-    const next = currentStatus === 'completed' ? 'pending' : 'completed';
-    const task = await updateTaskStatus(id, next);
-    setTasks(prev => prev.map(t => t.id === id ? task : t));
-    return task;
-  }
-
   async function remove(id) {
     await deleteTask(id);
     setTasks(prev => prev.filter(t => t.id !== id));
   }
 
-  return { tasks, loading, add, edit, toggleStatus, remove, refresh: fetch };
+  return { tasks, loading, add, edit, remove, refresh: fetch };
 }

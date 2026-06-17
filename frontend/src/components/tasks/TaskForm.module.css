@@ -26,3 +26,5 @@
 }
 .customInput:focus { border-color: var(--color-purple); }
 .error { font-size: 0.78rem; color: var(--color-error); }
+.statusReadOnly { font-size: 0.8125rem; color: var(--color-text-muted); }
+.statusHint { font-size: 0.75rem; font-style: italic; }

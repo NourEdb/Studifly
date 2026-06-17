@@ -6,7 +6,7 @@ import Button from '../ui/Button';
 import useTimer from '../../hooks/useTimer';
 import styles from './TaskList.module.css';
 
-export default function TaskList({ tasks, courses, add, edit, toggleStatus, remove, filters, setFilters }) {
+export default function TaskList({ tasks, courses, add, edit, remove, filters, setFilters }) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const { handleStart, isRunning, activeSession } = useTimer();
@@ -30,11 +30,6 @@ export default function TaskList({ tasks, courses, add, edit, toggleStatus, remo
     if (!confirm('Delete this task?')) return;
     try { await remove(id); toast.success('Task deleted'); }
     catch { toast.error('Failed to delete task'); }
-  }
-
-  async function handleToggle(id, status) {
-    try { await toggleStatus(id, status); }
-    catch { toast.error('Failed to update status'); }
   }
 
   async function handleStartTimer(task) {
@@ -75,7 +70,6 @@ export default function TaskList({ tasks, courses, add, edit, toggleStatus, remo
               task={t}
               onEdit={task => { setEditing(task); setShowForm(true); }}
               onDelete={handleDelete}
-              onToggle={handleToggle}
               onStartTimer={handleStartTimer}
             />
           ))}

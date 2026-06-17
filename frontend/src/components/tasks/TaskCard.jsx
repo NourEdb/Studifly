@@ -11,7 +11,7 @@ function fmtSeconds(sec) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onToggle, onStartTimer }) {
+export default function TaskCard({ task, onEdit, onDelete, onStartTimer }) {
   const isOverdue = task.overdue;
   const dueLabel = task.due_date ? new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const plannedH = task.planned_time ? `${Math.floor(task.planned_time / 60)}h ${task.planned_time % 60}m`.replace('0h ', '') : null;
@@ -20,11 +20,11 @@ export default function TaskCard({ task, onEdit, onDelete, onToggle, onStartTime
   return (
     <Card className={[styles.card, isOverdue && styles.overdue, task.status === 'completed' && styles.done].filter(Boolean).join(' ')}>
       <div className={styles.top}>
-        <button className={styles.check} onClick={() => onToggle(task.id, task.status)} title="Toggle complete">
+        <span className={styles.check}>
           <span className={[styles.checkIcon, task.status === 'completed' && styles.checked].filter(Boolean).join(' ')}>
             {task.status === 'completed' ? '✓' : ''}
           </span>
-        </button>
+        </span>
         <div className={styles.info}>
           <p className={styles.name}>{task.name}</p>
           <div className={styles.meta}>

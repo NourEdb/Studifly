@@ -32,9 +32,11 @@ function initForm(initial) {
     customType:    isCustom ? rawType : '',
     planned_time:  minsToHHMM(initial?.planned_time),
     due_date:      initial?.due_date || '',
-    status:        initial?.status || 'pending',
   };
 }
+
+const STATUS_LABELS = { pending: 'Pending', in_progress: 'In Progress', completed: 'Completed' };
+const STATUS_COLORS = { pending: 'var(--color-text-muted)', in_progress: 'var(--color-blue)', completed: 'var(--color-success)' };
 
 export default function TaskForm({ initial, courses, onSave, onClose }) {
   const [form, setForm]               = useState(() => initForm(initial));
@@ -149,14 +151,13 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
         </div>
 
         {initial && (
-          <div className={styles.field}>
-            <label htmlFor="task-status">Status</label>
-            <select id="task-status" value={form.status} onChange={e => set('status', e.target.value)}>
-              <option value="pending">Pending</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
+          <p className={styles.statusReadOnly}>
+            Status:&nbsp;
+            <span style={{ color: STATUS_COLORS[initial.status], fontWeight: 600 }}>
+              {STATUS_LABELS[initial.status] ?? initial.status}
+            </span>
+            <span className={styles.statusHint}> — updated automatically from session reflections</span>
+          </p>
         )}
 
         <div className={styles.actions}>

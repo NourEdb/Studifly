@@ -67,26 +67,16 @@ async function update(userId, id, body) {
 
   const fields = [];
   const params = [];
+  // status is intentionally excluded — it is derived from session reflections only
   if (body.name !== undefined) { fields.push('name = ?'); params.push(body.name); }
   if ('course_id' in body) { fields.push('course_id = ?'); params.push(body.course_id || null); }
   if (body.activity_type !== undefined) { fields.push('activity_type = ?'); params.push(body.activity_type); }
   if (body.planned_time !== undefined) { fields.push('planned_time = ?'); params.push(body.planned_time); }
   if ('due_date' in body) { fields.push('due_date = ?'); params.push(body.due_date || null); }
-  if (body.status !== undefined) { fields.push('status = ?'); params.push(body.status); }
 
   if (fields.length) {
     params.push(id);
     await db.run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, params);
-  }
-  return getOne(userId, id);
-}
-
-async function updateStatus(userId, id, status) {
-  const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
-  if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
-  await db.run('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
-  if (status === 'completed') {
-    gamification.onTaskComplete(userId, id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
   }
   return getOne(userId, id);
 }
@@ -97,4 +87,4 @@ async function remove(userId, id) {
   await db.run('DELETE FROM tasks WHERE id = ?', [id]);
 }
 
-module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove };
+module.exports = { getAll, getOne, getCustomActivityTypes, create, update, remove };
