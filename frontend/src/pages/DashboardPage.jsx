@@ -7,6 +7,7 @@ import GoalProgress from '../components/dashboard/GoalProgress';
 import TaskSummaryList from '../components/dashboard/TaskSummaryList';
 import HeatMap from '../components/dashboard/HeatMap';
 import CourseComparisonCharts from '../components/dashboard/CourseComparisonCharts';
+import PredictionCard from '../components/dashboard/PredictionCard';
 import { generateDashboardPdf } from '../utils/generatePdf';
 import styles from './DashboardPage.module.css';
 
@@ -17,7 +18,7 @@ function fmtHours(seconds) {
 }
 
 export default function DashboardPage() {
-  const { summary, weeklyHours, byCourse, heatmap, courseComparison, loading } = useDashboard();
+  const { summary, weeklyHours, byCourse, heatmap, courseComparison, prediction, loading } = useDashboard();
   const { user } = useAuth();
   const chartRef   = useRef(null);
   const heatmapRef = useRef(null);
@@ -79,6 +80,8 @@ export default function DashboardPage() {
           />
         )}
       </div>
+
+      <PredictionCard prediction={prediction} />
 
       <div className={styles.charts}>
         <div ref={chartRef}>

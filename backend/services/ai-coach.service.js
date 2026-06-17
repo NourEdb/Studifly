@@ -1,6 +1,7 @@
 const Groq = require('groq-sdk');
 const db = require('../database/db');
 const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
+const { getTaskPredictions } = require('./prediction.service');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -13,7 +14,7 @@ function fmtHour(h) {
 async function getStudyContext(userId) {
   const { start, end } = getISOWeekBounds(currentISOWeek());
 
-  const [weekRow, sessionRow, bestHoursRows, courseRow, taskRows, reflectionRow, overtimeRow] = await Promise.all([
+  const [weekRow, sessionRow, bestHoursRows, courseRow, taskRows, reflectionRow, overtimeRow, prediction] = await Promise.all([
     db.get(
       `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds
        FROM study_sessions WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL`,
@@ -67,6 +68,7 @@ async function getStudyContext(userId) {
        ORDER BY over_count DESC LIMIT 3`,
       [userId]
     ),
+    getTaskPredictions(userId),
   ]);
 
   const counts = { pending: 0, in_progress: 0, completed: 0 };
@@ -97,6 +99,9 @@ async function getStudyContext(userId) {
       total:    reflectionRow?.total_reflected || 0,
     },
     tasksNeedingBreakdown: overtimeRow || [],
+    predictionSummary: prediction.summary.total_count > 0
+      ? `${prediction.summary.on_track_count} of ${prediction.summary.total_count} pending tasks with deadlines are on track`
+      : null,
   };
 }
 
@@ -133,7 +138,7 @@ Current student stats:
 - Most studied course/subject: ${courseInfo}
 - Peak productivity hours: ${hoursInfo}
 - ${focusInfo}
-- Session completion: ${reflectionInfo}${overtimeInfo ? `\n- ${overtimeInfo}` : ''}
+- Session completion: ${reflectionInfo}${overtimeInfo ? `\n- ${overtimeInfo}` : ''}${ctx.predictionSummary ? `\n- Task completion forecast: ${ctx.predictionSummary}` : ''}
 
 Rules:
 - Keep every reply under 120 words.

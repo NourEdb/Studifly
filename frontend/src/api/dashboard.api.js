@@ -5,3 +5,4 @@ export const getWeeklyHours = (weeks = 4) => client.get('/dashboard/weekly-hours
 export const getByCourse   = ()           => client.get('/dashboard/by-course').then(r => r.data);
 export const getHeatmap          = ()  => client.get('/dashboard/heatmap').then(r => r.data);
 export const getCourseComparison = ()  => client.get('/dashboard/course-comparison').then(r => r.data);
+export const getPrediction        = ()  => client.get('/dashboard/prediction').then(r => r.data);

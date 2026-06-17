@@ -1,0 +1,146 @@
+.card { display: flex; flex-direction: column; gap: 12px; }
+
+/* Header row */
+.header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px; }
+
+.headline { display: flex; align-items: center; gap: 8px; }
+
+.dotGreen {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+}
+.dotAmber {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--color-warning);
+  flex-shrink: 0;
+}
+
+.title { font-size: 1rem; font-weight: 700; margin: 0; }
+
+.sub { font-size: 0.75rem; color: var(--color-text-muted); }
+
+/* All-good state */
+.allGood {
+  font-size: 0.875rem;
+  color: var(--color-success);
+  font-weight: 500;
+  padding: 8px 0 2px;
+}
+
+/* At-risk section */
+.riskLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+
+.taskList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.taskRow:last-child { border-bottom: none; }
+.taskRow:nth-child(odd) { background: var(--color-bg); }
+
+.taskName {
+  font-weight: 600;
+  color: var(--color-text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dueDate { color: var(--color-text-muted); font-size: 0.75rem; }
+
+/* Status tags */
+.tagOverdue {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-error);
+  background: var(--color-error-tint);
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tagToday {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-warning);
+  background: rgba(245, 166, 35, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.tagAtRisk {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-warning);
+  background: rgba(245, 166, 35, 0.12);
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.timeLeft {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Show more */
+.showMore {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--color-purple);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s;
+}
+.showMore:hover { opacity: 0.75; }
+
+/* Empty state */
+.emptyState {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.emptyIcon { font-size: 1.25rem; }
+.emptyText { font-size: 0.875rem; color: var(--color-text-muted); margin: 0; }
+
+/* Risk section wrapper */
+.riskSection { display: flex; flex-direction: column; }
