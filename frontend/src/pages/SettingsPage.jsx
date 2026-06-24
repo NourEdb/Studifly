@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import {
   updateMe,
@@ -7,6 +8,7 @@ import {
   deleteAccount as apiDeleteAccount,
   downloadCsv,
 } from '../api/auth.api';
+import { sendWeeklyReview } from '../api/email.api';
 import Card from '../components/ui/Card';
 import styles from './SettingsPage.module.css';
 
@@ -31,6 +33,8 @@ export default function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteMsg, setDeleteMsg]           = useState(null);
   const [deleting, setDeleting]             = useState(false);
+
+  const [sendingReview, setSendingReview] = useState(false);
 
   function closeDeleteModal() {
     setDeleteOpen(false);
@@ -109,6 +113,18 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSendWeeklyReview() {
+    setSendingReview(true);
+    try {
+      await sendWeeklyReview();
+      toast.success('Weekly review sent — check your inbox!');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to send weekly review');
+    } finally {
+      setSendingReview(false);
+    }
+  }
+
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Settings</h1>
@@ -180,6 +196,22 @@ export default function SettingsPage() {
           </label>
         </div>
         {notifMsg && <p className={notifMsg.ok ? styles.ok : styles.err}>{notifMsg.text}</p>}
+      </Card>
+
+      {/* Weekly Review */}
+      <Card className={styles.section}>
+        <h2 className={styles.sectionTitle}>Weekly Review</h2>
+        <p className={styles.hint}>
+          Every Sunday at 8 AM, Studifly emails you a personalized summary of your week —
+          total study hours, tasks completed, most studied course, and an AI-generated tip for next week.
+        </p>
+        <button
+          className={styles.btn}
+          onClick={handleSendWeeklyReview}
+          disabled={sendingReview}
+        >
+          {sendingReview ? 'Sending…' : 'Send me a weekly review now'}
+        </button>
       </Card>
 
       {/* Export */}
