@@ -1,0 +1,276 @@
+.page {
+  max-width: 720px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* ── Section card ───────────────────────────────────────────── */
+.section { padding: 20px 24px; }
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.countBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--color-purple);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 999px;
+}
+
+/* ── Search bar ─────────────────────────────────────────────── */
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 12px;
+  font-size: 0.95rem;
+  pointer-events: none;
+  line-height: 1;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.searchInput:focus { border-color: var(--color-purple); }
+.searchInput::placeholder { color: var(--color-text-muted); }
+
+.searchSpinner {
+  position: absolute;
+  right: 12px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  animation: fade 0.8s ease infinite alternate;
+}
+
+@keyframes fade {
+  from { opacity: 0.4; }
+  to   { opacity: 1; }
+}
+
+/* ── Results / list ─────────────────────────────────────────── */
+.resultsList {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.emptyText {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+/* ── Person row ─────────────────────────────────────────────── */
+.personRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: var(--radius-md);
+  transition: background 0.12s;
+}
+
+.personRow:hover { background: var(--color-purple-tint); }
+
+.friendRow .btnRemove { opacity: 0; }
+.friendRow:hover .btnRemove { opacity: 1; }
+
+/* ── Avatar ─────────────────────────────────────────────────── */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--color-purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── Name ───────────────────────────────────────────────────── */
+.personInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.username {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.displayName {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Studying status ────────────────────────────────────────── */
+.studyStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--color-border);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.dotActive {
+  background: var(--color-success);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 198, 138, 0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(52, 198, 138, 0); }
+}
+
+.studyingLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+/* ── Row actions ────────────────────────────────────────────── */
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* shared base for inline action buttons */
+.btnAdd,
+.btnAccept,
+.btnDecline,
+.btnRemove {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+
+.btnAdd {
+  background: transparent;
+  border: 1.5px solid var(--color-purple);
+  color: var(--color-purple);
+}
+.btnAdd:hover { background: var(--color-purple); color: #fff; }
+
+.btnAccept {
+  background: var(--color-success);
+  border: 1.5px solid var(--color-success);
+  color: #fff;
+}
+.btnAccept:hover { opacity: 0.85; }
+
+.btnDecline {
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+.btnDecline:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btnRemove {
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.btnRemove:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+/* Non-interactive status chips */
+.alreadyFriends {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-success);
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(52, 198, 138, 0.12);
+}
+
+.requestSent {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+/* ── Mobile ─────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .section { padding: 16px; }
+  .personRow { gap: 8px; }
+  .studyingLabel { display: none; }
+}

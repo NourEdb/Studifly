@@ -15,6 +15,7 @@ const eventsRoutes       = require('./routes/events.routes');
 const exportRoutes       = require('./routes/export.routes');
 const studyBlocksRoutes  = require('./routes/study-blocks.routes');
 const emailRoutes        = require('./routes/email.routes');
+const friendsRoutes      = require('./routes/friends.routes');
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/events',      eventsRoutes);
 app.use('/api/export',       exportRoutes);
 app.use('/api/study-blocks', studyBlocksRoutes);
 app.use('/api/email',        emailRoutes);
+app.use('/api/friends',      friendsRoutes);
 
 app.use(errorHandler);
 

@@ -11,6 +11,7 @@ import PlannerPage from './pages/PlannerPage';
 import AchievementsPage from './pages/AchievementsPage';
 import AICoachPage from './pages/AICoachPage';
 import SettingsPage from './pages/SettingsPage';
+import FriendsPage from './pages/FriendsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="tasks" element={<TasksPage />} />
         <Route path="tracker" element={<TrackerPage />} />
         <Route path="planner" element={<PlannerPage />} />
+        <Route path="friends" element={<FriendsPage />} />
         <Route path="achievements" element={<AchievementsPage />} />
         <Route path="ai-coach" element={<AICoachPage />} />
         <Route path="settings" element={<SettingsPage />} />

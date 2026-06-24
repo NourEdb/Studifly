@@ -19,6 +19,7 @@ const NAV = [
   { to: '/tasks',        icon: '✅', label: 'Tasks' },
   { to: '/tracker',      icon: '⏱️', label: 'Tracker' },
   { to: '/planner',      icon: '📅', label: 'Planner' },
+  { to: '/friends',      icon: '👥', label: 'Friends' },
   { to: '/achievements', icon: '🏆', label: 'Achievements' },
   { to: '/ai-coach',     icon: '🧠', label: 'AI Coach' },
   { to: '/settings',     icon: '⚙️', label: 'Settings' },

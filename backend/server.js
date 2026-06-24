@@ -1,8 +1,10 @@
 require('dotenv').config();
-const app = require('./app');
-const { initDb } = require('./database/db');
-const { startReminderJob }      = require('./jobs/reminder.job');
-const { startWeeklyReviewJob }  = require('./jobs/weekly-review.job');
+const http = require('http');
+const app  = require('./app');
+const { initDb }               = require('./database/db');
+const { init: initSocket }     = require('./socket');
+const { startReminderJob }     = require('./jobs/reminder.job');
+const { startWeeklyReviewJob } = require('./jobs/weekly-review.job');
 
 const PORT = process.env.PORT || 5000;
 
@@ -15,9 +17,14 @@ async function start() {
   }
 
   await initDb();
+
+  const httpServer = http.createServer(app);
+  initSocket(httpServer);
+
   startReminderJob();
   startWeeklyReviewJob();
-  app.listen(PORT, () => {
+
+  httpServer.listen(PORT, () => {
     console.log(`Studifly backend running on http://localhost:${PORT}`);
   });
 }
