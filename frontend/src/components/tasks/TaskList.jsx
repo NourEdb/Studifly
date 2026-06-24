@@ -2,14 +2,20 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import TaskCard from './TaskCard';
 import TaskForm from './TaskForm';
+import StudyBlockForm from './StudyBlockForm';
+import StudyBlockList from './StudyBlockList';
 import Button from '../ui/Button';
 import useTimer from '../../hooks/useTimer';
+import useStudyBlocks from '../../hooks/useStudyBlocks';
 import styles from './TaskList.module.css';
 
 export default function TaskList({ tasks, courses, add, edit, remove, filters, setFilters }) {
-  const [showForm, setShowForm] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm]       = useState(false);
+  const [editing, setEditing]         = useState(null);
+  const [planningTask, setPlanningTask] = useState(null);
+  const [editingBlock, setEditingBlock] = useState(null);
   const { handleStart, isRunning, activeSession } = useTimer();
+  const { add: addBlock, edit: editBlock, remove: removeBlock, forTask } = useStudyBlocks();
 
   async function handleSave(data) {
     try {
@@ -40,6 +46,38 @@ export default function TaskList({ tasks, courses, add, edit, remove, filters, s
     await handleStart(task.id, task.name);
   }
 
+  async function handleSaveBlock(data) {
+    try {
+      if (editingBlock) {
+        await editBlock(editingBlock.id, data);
+        toast.success('Study block updated');
+      } else {
+        await addBlock(data);
+        toast.success('Study block planned');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to save study block');
+      throw err;
+    }
+  }
+
+  async function handleDeleteBlock(id) {
+    if (!confirm('Delete this study block?')) return;
+    try { await removeBlock(id); toast.success('Study block deleted'); }
+    catch { toast.error('Failed to delete study block'); }
+  }
+
+  function openEditBlock(block) {
+    const task = tasks.find(t => t.id === block.task_id);
+    setEditingBlock(block);
+    setPlanningTask(task);
+  }
+
+  function closeBlockModal() {
+    setPlanningTask(null);
+    setEditingBlock(null);
+  }
+
   return (
     <div>
       <div className={styles.toolbar}>
@@ -65,13 +103,20 @@ export default function TaskList({ tasks, courses, add, edit, remove, filters, s
       ) : (
         <div className={styles.list}>
           {tasks.map(t => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              onEdit={task => { setEditing(task); setShowForm(true); }}
-              onDelete={handleDelete}
-              onStartTimer={handleStartTimer}
-            />
+            <div key={t.id}>
+              <TaskCard
+                task={t}
+                onEdit={task => { setEditing(task); setShowForm(true); }}
+                onDelete={handleDelete}
+                onStartTimer={handleStartTimer}
+                onPlanStudy={task => { setEditingBlock(null); setPlanningTask(task); }}
+              />
+              <StudyBlockList
+                blocks={forTask(t.id)}
+                onEdit={openEditBlock}
+                onDelete={handleDeleteBlock}
+              />
+            </div>
           ))}
         </div>
       )}
@@ -82,6 +127,15 @@ export default function TaskList({ tasks, courses, add, edit, remove, filters, s
           courses={courses}
           onSave={handleSave}
           onClose={() => { setShowForm(false); setEditing(null); }}
+        />
+      )}
+
+      {planningTask && (
+        <StudyBlockForm
+          task={planningTask}
+          block={editingBlock}
+          onSave={handleSaveBlock}
+          onClose={closeBlockModal}
         />
       )}
     </div>

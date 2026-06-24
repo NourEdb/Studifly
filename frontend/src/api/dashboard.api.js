@@ -8,3 +8,4 @@ export const getByCourse   = ()           => client.get('/dashboard/by-course').
 export const getHeatmap          = ()  => client.get('/dashboard/heatmap').then(r => r.data);
 export const getCourseComparison = ()  => client.get('/dashboard/course-comparison').then(r => r.data);
 export const getPrediction        = ()  => client.get('/dashboard/prediction').then(r => r.data);
+export const getBlocksComparison  = ()  => client.get('/dashboard/blocks-comparison').then(r => r.data);

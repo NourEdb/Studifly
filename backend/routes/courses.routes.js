@@ -10,6 +10,7 @@ router.get('/', ctrl.getAll);
 router.post('/', body('name').trim().notEmpty(), validate, ctrl.create);
 router.put('/:id', ctrl.update);
 router.delete('/:id', ctrl.remove);
-router.get('/:id/tasks', ctrl.getTasks);
+router.get('/:id/tasks',  ctrl.getTasks);
+router.get('/:id/detail', ctrl.getDetail);
 
 module.exports = router;

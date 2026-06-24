@@ -21,6 +21,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/011_password_reset.sql'),
   path.join(__dirname, 'migrations/012_pinned_badge.sql'),
   path.join(__dirname, 'migrations/013_ai_coach_messages.sql'),
+  path.join(__dirname, 'migrations/014_study_blocks.sql'),
 ];
 
 async function initDb() {

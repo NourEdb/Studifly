@@ -191,4 +191,34 @@ async function getCourseComparison(userId) {
   );
 }
 
-module.exports = { getSummary, getStreak, getPeerComparison, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison };
+// Returns per-day planned vs actual minutes for the current ISO week.
+// planned = block duration in minutes; actual = completion_pct * planned / 100.
+// Only days with at least one block are included.
+async function getBlocksComparison(userId) {
+  const { start, end } = getISOWeekBounds(currentISOWeek());
+  const weekStart = start.slice(0, 10);
+  const weekEnd   = end.slice(0, 10);
+
+  return db.all(
+    `SELECT
+       plan_date AS date,
+       ROUND(SUM(
+         EXTRACT(EPOCH FROM (end_time::time - start_time::time)) / 60.0
+       ))::int AS planned_minutes,
+       ROUND(SUM(
+         CASE WHEN completion_pct IS NOT NULL
+         THEN EXTRACT(EPOCH FROM (end_time::time - start_time::time)) / 60.0
+              * completion_pct / 100.0
+         ELSE 0 END
+       ))::int AS actual_minutes
+     FROM study_blocks
+     WHERE user_id = ?
+       AND plan_date >= ?
+       AND plan_date < ?
+     GROUP BY plan_date
+     ORDER BY plan_date ASC`,
+    [userId, weekStart, weekEnd]
+  );
+}
+
+module.exports = { getSummary, getStreak, getPeerComparison, getWeeklyHours, getByCourse, getHeatmap, getCourseComparison, getBlocksComparison };

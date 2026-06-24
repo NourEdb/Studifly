@@ -10,6 +10,7 @@
 .header { text-align: center; padding: 10px 8px 8px; border-bottom: 1px solid var(--color-border); position: relative; }
 .addBtn { position: absolute; top: 6px; right: 6px; background: none; border: 1px solid var(--color-border); border-radius: 50%; width: 20px; height: 20px; font-size: 0.9rem; line-height: 1; cursor: pointer; color: var(--color-text-muted); display: flex; align-items: center; justify-content: center; }
 .addBtn:hover { background: var(--color-purple); color: #fff; border-color: var(--color-purple); }
+.addBlockBtn { right: auto; left: 6px; font-size: 0.75rem; }
 .dayName { font-size: 0.75rem; text-transform: uppercase; color: var(--color-text-muted); font-weight: 600; }
 .dayNum { font-size: 1.25rem; font-weight: 700; }
 .today .dayNum { color: var(--color-purple); }

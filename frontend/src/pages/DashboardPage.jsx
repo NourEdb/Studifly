@@ -7,6 +7,7 @@ import GoalProgress from '../components/dashboard/GoalProgress';
 import TaskSummaryList from '../components/dashboard/TaskSummaryList';
 import HeatMap from '../components/dashboard/HeatMap';
 import CourseComparisonCharts from '../components/dashboard/CourseComparisonCharts';
+import PlanVsActualChart from '../components/dashboard/PlanVsActualChart';
 import PredictionCard from '../components/dashboard/PredictionCard';
 import { generateDashboardPdf } from '../utils/generatePdf';
 import styles from './DashboardPage.module.css';
@@ -61,7 +62,7 @@ function fmtHours(seconds) {
 }
 
 export default function DashboardPage() {
-  const { summary, weeklyHours, byCourse, heatmap, courseComparison, prediction, loading } = useDashboard();
+  const { summary, weeklyHours, byCourse, heatmap, courseComparison, prediction, blocksComparison, loading } = useDashboard();
   const { user } = useAuth();
   const chartRef   = useRef(null);
   const heatmapRef = useRef(null);
@@ -144,6 +145,8 @@ export default function DashboardPage() {
           <TaskSummaryList byCourse={byCourse} />
         </div>
       </div>
+
+      <PlanVsActualChart data={blocksComparison} />
 
       <div ref={heatmapRef}>
         <HeatMap data={heatmap} />

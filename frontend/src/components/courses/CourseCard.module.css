@@ -1,4 +1,44 @@
 .card { padding: 14px 18px; }
-.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
-.actions { display: flex; gap: 6px; }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nameBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text);
+  font-size: inherit;
+  font-weight: 600;
+  padding: 0;
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+}
+.nameBtn:hover .nameText { color: var(--color-purple); }
+
+.nameText {
+  transition: color 0.15s;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  font-size: 1.1rem;
+  color: var(--color-text-muted);
+  display: inline-block;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.open { transform: rotate(90deg); }
+
+.actions { display: flex; gap: 6px; flex-shrink: 0; }

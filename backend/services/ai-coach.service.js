@@ -201,4 +201,34 @@ async function clearHistory(userId) {
   return { ok: true };
 }
 
-module.exports = { getContext, getHistory, chat, clearHistory };
+// One-shot course insight — does NOT save to chat history.
+async function getCourseInsight(userId, { course_name, stats, task_names = [] }) {
+  const taskList = task_names.length > 0
+    ? `Tasks include: ${task_names.slice(0, 6).join(', ')}.`
+    : '';
+
+  const userPrompt =
+    `Give me an honest 2-3 sentence assessment of my progress in "${course_name}". ` +
+    `Stats: ${stats.completed_tasks} of ${stats.total_tasks} tasks completed ` +
+    `(${stats.completion_pct}% completion rate), ${stats.planned_hours}h total planned time, ` +
+    `${stats.actual_hours}h actually studied. ${taskList}`;
+
+  const completion = await groq.chat.completions.create({
+    model: 'llama-3.1-8b-instant',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are an encouraging AI study coach inside Studifly. ' +
+          'Give a 2-3 sentence honest, specific, and practical assessment of the student\'s progress in the given course. ' +
+          'Reference their actual numbers. Use plain text only — no markdown, no bullet points, no asterisks.',
+      },
+      { role: 'user', content: userPrompt },
+    ],
+    max_tokens: 200,
+  });
+
+  return { insight: completion.choices[0].message.content.trim() };
+}
+
+module.exports = { getContext, getHistory, chat, clearHistory, getCourseInsight };

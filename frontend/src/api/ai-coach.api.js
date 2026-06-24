@@ -11,3 +11,6 @@ export const sendChatMessage = (message) =>
 
 export const clearChatHistory = () =>
   client.delete('/ai-coach/history').then(r => r.data);
+
+export const getCourseInsight = (data) =>
+  client.post('/ai-coach/course-insight', data).then(r => r.data);

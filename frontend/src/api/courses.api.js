@@ -3,4 +3,5 @@ import client from './client';
 export const getCourses = () => client.get('/courses').then(r => r.data);
 export const createCourse = data => client.post('/courses', data).then(r => r.data);
 export const updateCourse = (id, data) => client.put(`/courses/${id}`, data).then(r => r.data);
-export const deleteCourse = id => client.delete(`/courses/${id}`);
+export const deleteCourse    = id      => client.delete(`/courses/${id}`);
+export const getCourseDetail = id      => client.get(`/courses/${id}/detail`).then(r => r.data);

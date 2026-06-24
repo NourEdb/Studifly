@@ -7,6 +7,7 @@ const byCourse    = async (req, res, next) => { try { res.json(await svc.getByCo
 const heatmap          = async (req, res, next) => { try { res.json(await svc.getHeatmap(req.user.id)); } catch (e) { next(e); } };
 const courseComparison = async (req, res, next) => { try { res.json(await svc.getCourseComparison(req.user.id)); } catch (e) { next(e); } };
 
-const prediction = async (req, res, next) => { try { res.json(await predSvc.getTaskPredictions(req.user.id)); } catch (e) { next(e); } };
+const prediction        = async (req, res, next) => { try { res.json(await predSvc.getTaskPredictions(req.user.id)); } catch (e) { next(e); } };
+const blocksComparison  = async (req, res, next) => { try { res.json(await svc.getBlocksComparison(req.user.id)); } catch (e) { next(e); } };
 
-module.exports = { summary, weeklyHours, byCourse, heatmap, courseComparison, prediction };
+module.exports = { summary, weeklyHours, byCourse, heatmap, courseComparison, prediction, blocksComparison };

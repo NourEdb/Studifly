@@ -11,7 +11,7 @@ function fmtSeconds(sec) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function TaskCard({ task, onEdit, onDelete, onStartTimer }) {
+export default function TaskCard({ task, onEdit, onDelete, onStartTimer, onPlanStudy }) {
   const isOverdue = task.overdue;
   const dueLabel = task.due_date ? new Date(task.due_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null;
   const plannedH = task.planned_time ? `${Math.floor(task.planned_time / 60)}h ${task.planned_time % 60}m`.replace('0h ', '') : null;
@@ -48,6 +48,9 @@ export default function TaskCard({ task, onEdit, onDelete, onStartTimer }) {
         <div className={styles.actions}>
           {onStartTimer && task.status !== 'completed' && (
             <Button variant="ghost" size="sm" onClick={() => onStartTimer(task)}>▶ Start</Button>
+          )}
+          {onPlanStudy && (
+            <Button variant="ghost" size="sm" onClick={() => onPlanStudy(task)}>＋ Plan</Button>
           )}
           <Button variant="text" size="sm" onClick={() => onEdit(task)}>Edit</Button>
           <Button variant="danger" size="sm" onClick={() => onDelete(task.id)}>✕</Button>
