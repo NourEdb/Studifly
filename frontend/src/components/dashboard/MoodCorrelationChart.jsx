@@ -28,6 +28,7 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function MoodCorrelationChart({ data }) {
+  console.log('[MoodCorrelationChart] data:', data);
   if (!data || data.length < 1) return null;
 
   const chartData = data.map(d => ({
@@ -41,7 +42,7 @@ export default function MoodCorrelationChart({ data }) {
     <Card>
       <h3 className={styles.title}>Mood &amp; Productivity Correlation</h3>
       <p className={styles.sub}>Daily mood, energy and study time</p>
-      <div className={styles.chartWrap}>
+      <div style={{ width: '100%', height: '300px' }}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0eef8" />
