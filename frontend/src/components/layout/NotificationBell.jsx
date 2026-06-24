@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import toast from 'react-hot-toast';
 import { getEvents } from '../../api/events.api';
+import { getRequests, acceptRequest, rejectRequest } from '../../api/friends.api';
+import { useSocket } from '../../context/SocketContext';
 import styles from './NotificationBell.module.css';
 
 const TYPE_ICONS = {
@@ -40,13 +43,33 @@ function filterUpcoming(events) {
 }
 
 export default function NotificationBell() {
-  const [events,  setEvents]  = useState([]);
-  const [seenIds, setSeenIds] = useState(loadSeen);
-  const [open,    setOpen]    = useState(false);
+  const socket = useSocket();
+
+  const [events,         setEvents]         = useState([]);
+  const [seenIds,        setSeenIds]        = useState(loadSeen);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [open,           setOpen]           = useState(false);
   const ref = useRef(null);
 
+  // ── Data loading ─────────────────────────────────────────────
   useEffect(() => { getEvents().then(setEvents).catch(() => {}); }, []);
 
+  const loadRequests = useCallback(() => {
+    getRequests().then(setFriendRequests).catch(() => {});
+  }, []);
+
+  useEffect(() => { loadRequests(); }, [loadRequests]);
+
+  // ── Real-time: new friend request ────────────────────────────
+  useEffect(() => {
+    if (!socket) return;
+    // Re-fetch the full list so we get display_name + all fields correctly
+    function onFriendRequestReceived() { loadRequests(); }
+    socket.on('friend_request_received', onFriendRequestReceived);
+    return () => socket.off('friend_request_received', onFriendRequestReceived);
+  }, [socket, loadRequests]);
+
+  // ── Close on outside click ───────────────────────────────────
   useEffect(() => {
     function handleClick(e) {
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
@@ -55,9 +78,12 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
-  const upcoming = filterUpcoming(events);
+  // ── Derived counts ───────────────────────────────────────────
+  const upcoming    = filterUpcoming(events);
   const unreadCount = upcoming.filter(e => !seenIds.has(e.id)).length;
+  const totalBadge  = unreadCount + friendRequests.length;
 
+  // ── Handlers ─────────────────────────────────────────────────
   function markSeen(id) {
     setSeenIds(prev => {
       const next = new Set(prev);
@@ -67,6 +93,26 @@ export default function NotificationBell() {
     });
   }
 
+  async function handleAccept(friendshipId) {
+    try {
+      await acceptRequest(friendshipId);
+      setFriendRequests(prev => prev.filter(r => r.friendship_id !== friendshipId));
+      toast.success('Friend request accepted!');
+    } catch {
+      toast.error('Failed to accept request');
+    }
+  }
+
+  async function handleDecline(friendshipId) {
+    try {
+      await rejectRequest(friendshipId);
+      setFriendRequests(prev => prev.filter(r => r.friendship_id !== friendshipId));
+    } catch {
+      toast.error('Failed to decline request');
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────
   return (
     <div className={styles.wrapper} ref={ref}>
       <button
@@ -75,14 +121,53 @@ export default function NotificationBell() {
         aria-label="Notifications"
       >
         🔔
-        {unreadCount > 0 && (
-          <span className={styles.badge}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+        {totalBadge > 0 && (
+          <span className={styles.badge}>{totalBadge > 9 ? '9+' : totalBadge}</span>
         )}
       </button>
 
       {open && (
         <div className={styles.dropdown}>
-          <div className={styles.dropHeader}>
+
+          {/* ── Friend Requests section ──────────────────────── */}
+          {friendRequests.length > 0 && (
+            <>
+              <div className={styles.dropHeader}>
+                <span className={styles.dropTitle}>Friend Requests</span>
+                <span className={styles.dropSub}>{friendRequests.length} pending</span>
+              </div>
+              <ul className={styles.list}>
+                {friendRequests.map(req => (
+                  <li key={req.friendship_id} className={styles.requestItem}>
+                    <div className={styles.reqAvatar}>
+                      {(req.username?.[0] ?? '?').toUpperCase()}
+                    </div>
+                    <div className={styles.info}>
+                      <span className={styles.evTitle}>{req.username}</span>
+                      {req.display_name && req.display_name !== req.username && (
+                        <span className={styles.meta}>{req.display_name}</span>
+                      )}
+                    </div>
+                    <div className={styles.reqActions}>
+                      <button
+                        className={styles.btnAccept}
+                        onClick={() => handleAccept(req.friendship_id)}
+                        title="Accept"
+                      >✓</button>
+                      <button
+                        className={styles.btnDecline}
+                        onClick={() => handleDecline(req.friendship_id)}
+                        title="Decline"
+                      >✕</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* ── Upcoming Events section ──────────────────────── */}
+          <div className={[styles.dropHeader, friendRequests.length > 0 && styles.dropHeaderBorder].filter(Boolean).join(' ')}>
             <span className={styles.dropTitle}>Upcoming Events</span>
             <span className={styles.dropSub}>Next 3 days</span>
           </div>
@@ -113,6 +198,7 @@ export default function NotificationBell() {
               })}
             </ul>
           )}
+
         </div>
       )}
     </div>

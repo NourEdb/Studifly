@@ -35,18 +35,20 @@
   border: 2px solid var(--color-surface);
 }
 
-/* Dropdown */
+/* ── Dropdown ───────────────────────────────────────────────── */
 .dropdown {
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 300px;
+  width: 310px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   z-index: 200;
   overflow: hidden;
+  max-height: 440px;
+  overflow-y: auto;
 }
 
 .dropHeader {
@@ -55,6 +57,16 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
+  background: var(--color-surface);
+  /* Stick section headers when scrolling */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* Adds a top border when the events header follows the requests list */
+.dropHeaderBorder {
+  border-top: 1px solid var(--color-border);
 }
 
 .dropTitle {
@@ -81,6 +93,73 @@
   padding: 0;
 }
 
+/* ── Friend request row ─────────────────────────────────────── */
+.requestItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  transition: background 0.12s;
+}
+.requestItem:last-child { border-bottom: none; }
+.requestItem:hover { background: var(--color-bg); }
+
+.reqAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.reqActions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.btnAccept,
+.btnDecline {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.btnAccept {
+  background: rgba(52, 198, 138, 0.15);
+  color: var(--color-success);
+}
+.btnAccept:hover {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.btnDecline {
+  background: rgba(232, 84, 84, 0.10);
+  color: var(--color-error);
+}
+.btnDecline:hover {
+  background: var(--color-error);
+  color: #fff;
+}
+
+/* ── Upcoming event row (unchanged) ────────────────────────── */
 .item {
   display: flex;
   align-items: center;

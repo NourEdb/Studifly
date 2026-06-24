@@ -25,4 +25,11 @@ async function emitToBuddies(userId, event, payload) {
   }
 }
 
-module.exports = { emitToBuddies };
+/** Emit an event to a single user's room. */
+function emitToUser(userId, event, payload) {
+  const io = getIO();
+  if (!io) return;
+  io.to(`user:${userId}`).emit(event, payload);
+}
+
+module.exports = { emitToBuddies, emitToUser };
