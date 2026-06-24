@@ -81,3 +81,41 @@
   transition: background 0.15s, color 0.15s;
 }
 .themeToggle:hover { background: var(--color-purple-tint); color: var(--color-purple); }
+
+/* Overlay — hidden by default, shown on mobile when sidebar is open */
+.overlay {
+  display: none;
+}
+
+/* ── Mobile ────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 199;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .overlayVisible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    /* keep min-height from overriding height on mobile */
+    min-height: unset;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+}
