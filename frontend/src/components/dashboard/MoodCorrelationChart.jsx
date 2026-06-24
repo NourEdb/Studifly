@@ -41,7 +41,8 @@ export default function MoodCorrelationChart({ data }) {
     <Card>
       <h3 className={styles.title}>Mood &amp; Productivity Correlation</h3>
       <p className={styles.sub}>Daily mood, energy and study time</p>
-      <ResponsiveContainer width="100%" height={240}>
+      <div className={styles.chartWrap}>
+      <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={chartData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0eef8" />
           <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#7B7A99' }} />
@@ -95,6 +96,7 @@ export default function MoodCorrelationChart({ data }) {
           />
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
     </Card>
   );
 }

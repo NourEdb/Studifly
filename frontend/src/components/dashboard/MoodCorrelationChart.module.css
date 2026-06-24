@@ -1,6 +1,11 @@
 .title { margin: 0 0 2px; }
 .sub   { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0 0 16px; }
 
+.chartWrap {
+  width: 100%;
+  min-height: 300px;
+}
+
 .tooltip {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
