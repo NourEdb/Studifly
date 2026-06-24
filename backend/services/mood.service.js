@@ -48,19 +48,12 @@ async function getCorrelation(userId) {
        mc.checkin_date,
        mc.mood_score,
        mc.energy_score,
-       COALESCE(
-         ROUND(
-           SUM(
-             EXTRACT(EPOCH FROM (COALESCE(ss.end_time, NOW()) - ss.start_time))
-           ) / 60
-         )::INTEGER,
-         0
-       ) AS study_minutes
+       COALESCE(SUM(ss.duration) / 60, 0)::INTEGER AS study_minutes
      FROM mood_checkins mc
      LEFT JOIN study_sessions ss
        ON ss.user_id = mc.user_id
-      AND ss.start_time::DATE = mc.checkin_date
-      AND ss.end_time IS NOT NULL
+      AND (ss.start_time AT TIME ZONE 'UTC')::DATE = mc.checkin_date
+      AND ss.duration IS NOT NULL
      WHERE mc.user_id = ?
      GROUP BY mc.checkin_date, mc.mood_score, mc.energy_score
      ORDER BY mc.checkin_date ASC`,

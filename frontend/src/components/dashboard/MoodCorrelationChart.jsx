@@ -28,7 +28,7 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function MoodCorrelationChart({ data }) {
-  if (!data || data.length < 3) return null;
+  if (!data || data.length < 1) return null;
 
   const chartData = data.map(d => ({
     date:          fmtDate(d.checkin_date),
