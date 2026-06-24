@@ -1,0 +1,157 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 16, 64, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: fadeIn 0.18s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 420px;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.header {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 3px;
+}
+
+.sub {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.body {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* ── Picker row ─────────────────────────────────────────────── */
+.pickerGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pickerLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pickerSelected {
+  font-weight: 500;
+  color: var(--color-purple);
+}
+
+.emojiRow {
+  display: flex;
+  gap: 8px;
+}
+
+.emojiBtn {
+  flex: 1;
+  height: 48px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.emojiBtn:hover {
+  border-color: var(--color-purple-light);
+  transform: scale(1.08);
+}
+
+.emojiBtnActive {
+  border-color: var(--color-purple);
+  background: var(--color-purple-tint);
+  transform: scale(1.08);
+}
+
+/* ── Note input ─────────────────────────────────────────────── */
+.noteInput {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.noteInput:focus { border-color: var(--color-purple); }
+.noteInput::placeholder { color: var(--color-text-muted); }
+
+/* ── Actions ────────────────────────────────────────────────── */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 2px;
+}
+
+.btnSubmit {
+  padding: 9px 22px;
+  background: var(--color-purple);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: background 0.15s;
+}
+
+.btnSubmit:hover:not(:disabled) { background: var(--color-purple-dark); }
+.btnSubmit:disabled { opacity: 0.55; cursor: not-allowed; }
+
+.btnSkip {
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s;
+}
+
+.btnSkip:hover { color: var(--color-text); }

@@ -1,0 +1,17 @@
+.title { margin: 0 0 2px; }
+.sub   { font-size: 0.8125rem; color: var(--color-text-muted); margin: 0 0 16px; }
+
+.tooltip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+  box-shadow: var(--shadow-sm);
+}
+
+.tooltipDate   { font-weight: 700; margin-bottom: 4px; color: var(--color-text); }
+.tooltipMood   { color: var(--color-purple); }
+.tooltipEnergy { color: var(--color-blue); }
+.tooltipMins   { color: var(--color-success); }

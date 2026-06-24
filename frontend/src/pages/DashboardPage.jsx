@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useDashboard from '../hooks/useDashboard';
 import { useAuth } from '../context/AuthContext';
 import StatCard from '../components/dashboard/StatCard';
@@ -9,6 +9,8 @@ import HeatMap from '../components/dashboard/HeatMap';
 import CourseComparisonCharts from '../components/dashboard/CourseComparisonCharts';
 import PlanVsActualChart from '../components/dashboard/PlanVsActualChart';
 import PredictionCard from '../components/dashboard/PredictionCard';
+import MoodCorrelationChart from '../components/dashboard/MoodCorrelationChart';
+import { getCorrelation } from '../api/mood.api';
 import { generateDashboardPdf } from '../utils/generatePdf';
 import styles from './DashboardPage.module.css';
 
@@ -66,7 +68,12 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const chartRef   = useRef(null);
   const heatmapRef = useRef(null);
-  const [exporting, setExporting] = useState(false);
+  const [exporting,    setExporting]    = useState(false);
+  const [moodData,     setMoodData]     = useState([]);
+
+  useEffect(() => {
+    getCorrelation().then(setMoodData).catch(() => {});
+  }, []);
 
   async function handleExport() {
     if (exporting || !summary) return;
@@ -151,6 +158,8 @@ export default function DashboardPage() {
       <div ref={heatmapRef}>
         <HeatMap data={heatmap} />
       </div>
+
+      <MoodCorrelationChart data={moodData} />
 
       <CourseComparisonCharts data={courseComparison} />
     </div>

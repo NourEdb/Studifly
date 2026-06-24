@@ -16,6 +16,7 @@ const exportRoutes       = require('./routes/export.routes');
 const studyBlocksRoutes  = require('./routes/study-blocks.routes');
 const emailRoutes        = require('./routes/email.routes');
 const friendsRoutes      = require('./routes/friends.routes');
+const moodRoutes         = require('./routes/mood.routes');
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/export',       exportRoutes);
 app.use('/api/study-blocks', studyBlocksRoutes);
 app.use('/api/email',        emailRoutes);
 app.use('/api/friends',      friendsRoutes);
+app.use('/api/mood',         moodRoutes);
 
 app.use(errorHandler);
 
