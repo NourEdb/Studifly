@@ -45,7 +45,7 @@ async function getTodayCheckin(userId) {
 async function getCorrelation(userId) {
   return db.all(
     `SELECT
-       mc.checkin_date,
+       TO_CHAR(mc.checkin_date, 'YYYY-MM-DD') AS checkin_date,
        mc.mood_score,
        mc.energy_score,
        COALESCE(SUM(ss.duration) / 60, 0)::INTEGER AS study_minutes

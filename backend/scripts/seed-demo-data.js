@@ -236,10 +236,58 @@ async function main() {
     }
   }
 
+  // ── 3. This-week study sessions (Jun 22–24, 2026) ────────────────────────
+  //
+  // seed-demo.js used relative daysAgo() so those sessions are now weeks old.
+  // These hardcoded sessions land in the current ISO week so the Dashboard
+  // "This week" stat, Prediction Card, and Peer Comparison all show real data.
+  //
+  // [taskName, startISO, endISO, durationSecs, focusScore, difficultyRating]
+  const weekSessions = [
+    // Mon Jun 22
+    ['Final Exam Preparation',    '2026-06-22T09:00:00Z', '2026-06-22T10:30:00Z', 90 * 60, 4, 3],
+    ['Neural Networks Deep Dive', '2026-06-22T14:00:00Z', '2026-06-22T15:15:00Z', 75 * 60, 5, 4],
+    // Tue Jun 23
+    ['Frontend Dashboard Project','2026-06-23T10:00:00Z', '2026-06-23T11:30:00Z', 90 * 60, 4, 3],
+    ['Final Research Proposal',   '2026-06-23T15:30:00Z', '2026-06-23T16:30:00Z', 60 * 60, 3, 3],
+    // Wed Jun 24
+    ['Neural Networks Deep Dive', '2026-06-24T09:00:00Z', '2026-06-24T10:15:00Z', 75 * 60, 4, 4],
+    ['Final Exam Preparation',    '2026-06-24T13:00:00Z', '2026-06-24T14:00:00Z', 60 * 60, 5, 3],
+  ];
+
+  const existingWeekSessions = await one(
+    `SELECT id FROM study_sessions WHERE user_id = ?
+     AND start_time >= '2026-06-22T00:00:00Z' AND start_time < '2026-06-29T00:00:00Z'`,
+    [userId]
+  );
+
+  if (existingWeekSessions) {
+    console.log('  this-week sessions already seeded — skipping');
+  } else {
+    let sessionCount = 0;
+    let totalMins = 0;
+    for (const [taskName, start, end, durSecs, focus, diff] of weekSessions) {
+      const taskId = taskMap[taskName] || null;
+      await q(
+        `INSERT INTO study_sessions
+           (user_id, task_id, start_time, end_time, duration, is_manual,
+            focus_score, difficulty_rating, completion_answer, task_marked_done, status)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?, 'yes', 0, 'completed')`,
+        [userId, taskId, start, end, durSecs, focus, diff]
+      );
+      sessionCount++;
+      totalMins += durSecs / 60;
+    }
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    console.log(`  Inserted ${sessionCount} sessions for Jun 22–24 → ${h}h ${m}m this week`);
+  }
+
   console.log('');
   console.log('✅ Demo data ready!');
   console.log('   Mood check-ins: 14 days (shows correlation with study activity)');
   console.log('   Study blocks: current week + last week (feeds Plan vs Reality chart)');
+  console.log('   This-week sessions: Jun 22–24, 2026 (fixes Dashboard, Prediction, Peers)');
 }
 
 main()
