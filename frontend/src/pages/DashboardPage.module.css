@@ -51,3 +51,7 @@
 .peerUp      { color: var(--color-success); font-weight: 600; }
 .peerDown    { color: var(--color-error);   font-weight: 600; }
 .peerNeutral { color: var(--color-text);    font-weight: 600; }
+
+@media (max-width: 767px) {
+  .charts { grid-template-columns: 1fr; }
+}

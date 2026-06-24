@@ -118,3 +118,7 @@
 }
 .session:hover .deleteBtn { opacity: 1; }
 .deleteBtn:hover { color: var(--color-error); background: var(--color-error-tint); }
+
+@media (max-width: 767px) {
+  .page { grid-template-columns: 1fr; }
+}
