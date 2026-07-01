@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { dateStrUTC } = require('../utils/dateHelpers');
 
 const TYPE_LABELS = {
   exam:     { label: 'Exam',     color: '#E85454', icon: '📝' },
@@ -18,13 +19,27 @@ function createTransporter() {
   });
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function dayLabelFor(event) {
+  return event.event_date === dateStrUTC(0) ? 'today' : 'tomorrow';
+}
+
 function buildHtml(event) {
   const meta = TYPE_LABELS[event.type] || TYPE_LABELS.other;
+  const dayLabel = dayLabelFor(event);
   const timeRow = event.event_time
-    ? `<tr><td class="label">Time</td><td>${event.event_time}</td></tr>`
+    ? `<tr><td class="label">Time</td><td>${escapeHtml(event.event_time)}</td></tr>`
     : '';
   const notesRow = event.notes
-    ? `<tr><td class="label">Notes</td><td>${event.notes}</td></tr>`
+    ? `<tr><td class="label">Notes</td><td>${escapeHtml(event.notes)}</td></tr>`
     : '';
 
   return `<!DOCTYPE html>
@@ -57,11 +72,11 @@ function buildHtml(event) {
     <div class="header">
       <div class="logo">Studi<span>fly</span></div>
       <div class="tagline">Your personal study companion</div>
-      <div class="badge">${meta.icon} Reminder for tomorrow</div>
+      <div class="badge">${meta.icon} Reminder for ${dayLabel}</div>
     </div>
     <div class="content">
       <p class="reminder-title">Upcoming event</p>
-      <p class="event-title">${event.title}</p>
+      <p class="event-title">${escapeHtml(event.title)}</p>
       <span class="type-chip">${meta.label}</span>
       <table class="details">
         <tr><td class="label">Date</td><td>${event.event_date}</td></tr>
@@ -130,11 +145,12 @@ function buildPasswordResetHtml(resetUrl) {
 
 async function sendReminderEmail(toEmail, event) {
   const meta = TYPE_LABELS[event.type] || TYPE_LABELS.other;
+  const dayLabel = dayLabelFor(event);
   const transporter = createTransporter();
   await transporter.sendMail({
     from: `"Studifly" <${process.env.EMAIL_USER}>`,
     to: toEmail,
-    subject: `${meta.icon} Reminder: "${event.title}" is tomorrow`,
+    subject: `${meta.icon} Reminder: "${event.title}" is ${dayLabel}`,
     html: buildHtml(event),
   });
 }

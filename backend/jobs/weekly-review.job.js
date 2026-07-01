@@ -16,7 +16,7 @@ function startWeeklyReviewJob() {
     sendWeeklyReviewToAll().catch(err =>
       console.error('[weekly-review-job] Unexpected error:', err.message)
     );
-  });
+  }, { timezone: 'UTC' });
 
   console.log('[weekly-review-job] Scheduled: Sundays at 08:00 UTC.');
 }

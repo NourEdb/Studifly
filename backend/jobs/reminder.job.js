@@ -1,19 +1,11 @@
 const cron = require('node-cron');
 const db = require('../database/db');
 const { sendReminderEmail } = require('../services/email.service');
-
-function dateStr(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+const { dateStrUTC } = require('../utils/dateHelpers');
 
 async function sendReminders() {
-  const today    = dateStr(0);
-  const tomorrow = dateStr(1);
+  const today    = dateStrUTC(0);
+  const tomorrow = dateStrUTC(1);
 
   console.log(`[reminder-job] Running at ${new Date().toISOString()} — checking window ${today} → ${tomorrow}`);
 

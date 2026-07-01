@@ -30,4 +30,14 @@ function currentISOWeek() {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
-module.exports = { getISOWeekBounds, currentISOWeek };
+// Returns a YYYY-MM-DD date string in UTC, offset by the given number of days
+function dateStrUTC(offsetDays = 0) {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+module.exports = { getISOWeekBounds, currentISOWeek, dateStrUTC };

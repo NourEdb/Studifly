@@ -29,10 +29,14 @@ async function create(userId, { title, type, notes, event_date, event_time }) {
 }
 
 async function update(userId, id, { title, type, notes, event_date, event_time }) {
-  const event = await db.get('SELECT id FROM events WHERE id = ? AND user_id = ?', [id, userId]);
+  const event = await db.get('SELECT id, event_date FROM events WHERE id = ? AND user_id = ?', [id, userId]);
   if (!event) { const e = new Error('Not found'); e.status = 404; throw e; }
+
+  // Rescheduling to a new date should let the reminder job fire again for it
+  const dateChanged = event_date !== event.event_date;
+
   return db.get(
-    `UPDATE events SET title = ?, type = ?, notes = ?, event_date = ?, event_time = ? WHERE id = ? RETURNING *`,
+    `UPDATE events SET title = ?, type = ?, notes = ?, event_date = ?, event_time = ?${dateChanged ? ', reminder_sent = false' : ''} WHERE id = ? RETURNING *`,
     [title, type || 'other', notes || null, event_date, event_time || null, id]
   );
 }
