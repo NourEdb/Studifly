@@ -6,8 +6,15 @@ import PostSessionModal from './PostSessionModal';
 import Button from '../ui/Button';
 import styles from './TimerWidget.module.css';
 
-const WORK_SECS = 25 * 60;
-const BREAK_SECS = 5 * 60;
+const WORK_MIN_DEFAULT = 25;
+const BREAK_MIN_DEFAULT = 5;
+const LS_WORK_KEY = 'studifly_pomodoro_work_minutes';
+const LS_BREAK_KEY = 'studifly_pomodoro_break_minutes';
+
+function loadStoredMinutes(key, fallback) {
+  const n = parseInt(localStorage.getItem(key), 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
 
 function requestNotifPermission() {
   if ('Notification' in window && Notification.permission === 'default') {
@@ -59,7 +66,9 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
 
   const [pomMode, setPomMode]         = useState(false);
   const [pomPhase, setPomPhase]       = useState('work');
-  const [pomSecsLeft, setPomSecsLeft] = useState(WORK_SECS);
+  const [workMinutes, setWorkMinutes]   = useState(() => loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT));
+  const [breakMinutes, setBreakMinutes] = useState(() => loadStoredMinutes(LS_BREAK_KEY, BREAK_MIN_DEFAULT));
+  const [pomSecsLeft, setPomSecsLeft] = useState(() => loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT) * 60);
   const pomPhaseRef                   = useRef('work');
 
   useEffect(() => {
@@ -75,17 +84,30 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
           setPomPhase(next);
           if (next === 'break') {
             sendNotif('Studifly', 'Time to take a break!');
-            return BREAK_SECS;
+            return breakMinutes * 60;
           } else {
             sendNotif('Studifly', 'Back to work!');
-            return WORK_SECS;
+            return workMinutes * 60;
           }
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [pomMode, isRunning]);
+  }, [pomMode, isRunning, workMinutes, breakMinutes]);
+
+  function updateWorkMinutes(raw) {
+    const n = Math.max(1, parseInt(raw, 10) || 1);
+    setWorkMinutes(n);
+    localStorage.setItem(LS_WORK_KEY, String(n));
+    if (!isRunning) setPomSecsLeft(n * 60);
+  }
+
+  function updateBreakMinutes(raw) {
+    const n = Math.max(1, parseInt(raw, 10) || 1);
+    setBreakMinutes(n);
+    localStorage.setItem(LS_BREAK_KEY, String(n));
+  }
 
   async function start() {
     if (pomMode) requestNotifPermission();
@@ -100,7 +122,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
     if (session) setStoppedSession(session);
     if (pomMode) {
       setPomPhase('work');
-      setPomSecsLeft(WORK_SECS);
+      setPomSecsLeft(workMinutes * 60);
     }
     setPlannedMinutes(null);
   }
@@ -118,7 +140,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
     if (isRunning) return;
     setPomMode(toPom);
     setPomPhase('work');
-    setPomSecsLeft(WORK_SECS);
+    setPomSecsLeft(workMinutes * 60);
   }
 
   function handleReflectionDone() {
@@ -150,6 +172,33 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
             Pomodoro
           </button>
         </div>
+
+        {pomMode && (
+          <div className={styles.pomSettings}>
+            <div className={styles.pomSettingField}>
+              <label>Work (min)</label>
+              <input
+                type="number"
+                min="1"
+                max="180"
+                value={workMinutes}
+                onChange={e => updateWorkMinutes(e.target.value)}
+                disabled={isRunning}
+              />
+            </div>
+            <div className={styles.pomSettingField}>
+              <label>Break (min)</label>
+              <input
+                type="number"
+                min="1"
+                max="60"
+                value={breakMinutes}
+                onChange={e => updateBreakMinutes(e.target.value)}
+                disabled={isRunning}
+              />
+            </div>
+          </div>
+        )}
 
         <div className={styles.displayWrapper}>
           {pomMode && (

@@ -80,7 +80,7 @@ export default function ManualEntryForm({ tasks, onSaved }) {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form}>
-      <h3 className={styles.title}>Log a past session</h3>
+      <h3 className={styles.title}>Log Session Manually</h3>
 
       <div className={styles.field}>
         <label>Task (optional)</label>

@@ -39,6 +39,21 @@
   color: var(--color-text);
 }
 
+.pomSettings {
+  display: flex;
+  gap: 12px;
+  align-self: stretch;
+}
+.pomSettingField { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.pomSettingField label { font-size: 0.75rem; font-weight: 600; color: var(--color-text-muted); }
+.pomSettingField input {
+  padding: 7px 10px; border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md); font-size: 0.8125rem;
+  background: var(--color-surface); color: var(--color-text); outline: none; width: 100%;
+}
+.pomSettingField input:focus { border-color: var(--color-purple); }
+.pomSettingField input:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .phaseBadge {
   display: inline-block;
   padding: 4px 16px;
