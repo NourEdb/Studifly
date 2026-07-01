@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Modal from '../ui/Modal';
 import Input from '../ui/Input';
 import Button from '../ui/Button';
+import DateTimePicker from '../ui/DateTimePicker';
 import { getCustomActivityTypes } from '../../api/tasks.api';
 import styles from './TaskForm.module.css';
 
@@ -22,6 +23,22 @@ function hhmmToMins(hhmm) {
   return (h || 0) * 60 + (m || 0);
 }
 
+// due_date is stored as a plain "YYYY-MM-DD" string — parse/format using local
+// date components (not UTC) so the picked day never shifts across timezones.
+function parseDueDate(str) {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDueDate(date) {
+  if (!date) return null;
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function initForm(initial) {
   const rawType = initial?.activity_type || 'reading';
   const isCustom = initial && !BUILT_IN_ACTIVITY_TYPES.has(rawType);
@@ -31,7 +48,7 @@ function initForm(initial) {
     activity_type: isCustom ? '__custom__' : rawType,
     customType:    isCustom ? rawType : '',
     planned_time:  minsToHHMM(initial?.planned_time),
-    due_date:      initial?.due_date || '',
+    due_date:      parseDueDate(initial?.due_date),
   };
 }
 
@@ -74,7 +91,7 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
         activity_type: finalType,
         course_id:     form.course_id || null,
         planned_time:  hhmmToMins(form.planned_time),
-        due_date:      form.due_date || null,
+        due_date:      formatDueDate(form.due_date),
       });
       onClose();
     } finally {
@@ -141,12 +158,12 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
             value={form.planned_time}
             onChange={e => set('planned_time', e.target.value)}
           />
-          <Input
+          <DateTimePicker
             id="task-due"
             label="Due date (optional)"
-            type="date"
-            value={form.due_date}
-            onChange={e => set('due_date', e.target.value)}
+            selected={form.due_date}
+            onChange={date => set('due_date', date)}
+            showTime={false}
           />
         </div>
 
