@@ -30,7 +30,7 @@ function StarRating({ value, onChange, label }) {
   );
 }
 
-export default function PostSessionModal({ session, onClose, onDone }) {
+export default function PostSessionModal({ session, onDone }) {
   const [completion, setCompletion] = useState(null);
   const [markDone, setMarkDone]     = useState(false);
   const [extraTime, setExtraTime]   = useState('');
@@ -72,12 +72,12 @@ export default function PostSessionModal({ session, onClose, onDone }) {
     }
   }
 
-  async function handleSkip() {
-    onClose();
+  function handleCloseAttempt() {
+    toast('Please save your reflection to continue', { icon: '📝' });
   }
 
   return (
-    <Modal title="How did that session go?" onClose={handleSkip} size="md">
+    <Modal title="How did that session go?" onClose={handleCloseAttempt} size="md">
       <div className={styles.body}>
 
         <div className={styles.section}>
@@ -141,13 +141,12 @@ export default function PostSessionModal({ session, onClose, onDone }) {
         </div>
 
         <div className={styles.actions}>
-          <Button variant="ghost" onClick={handleSkip} disabled={saving}>Skip</Button>
           {(completion === 'partially' || completion === 'no') && (
-            <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={saving}>
+            <Button variant="secondary" onClick={() => handleSubmit(true)} disabled={saving || !completion}>
               To be continued
             </Button>
           )}
-          <Button onClick={() => handleSubmit(false)} disabled={saving}>
+          <Button onClick={() => handleSubmit(false)} disabled={saving || !completion}>
             {saving ? 'Saving…' : 'Save Reflection'}
           </Button>
         </div>

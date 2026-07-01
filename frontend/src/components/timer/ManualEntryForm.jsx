@@ -26,9 +26,16 @@ function StarRating({ value, onChange, label }) {
   );
 }
 
+const COMPLETION_OPTIONS = [
+  { value: '',          label: 'No answer' },
+  { value: 'yes',       label: 'Yes!' },
+  { value: 'partially', label: 'Partially' },
+  { value: 'no',        label: 'Not really' },
+];
+
 export default function ManualEntryForm({ tasks, onSaved }) {
   const [form, setForm] = useState({
-    task_id: '', start_time: '', end_time: '', notes: '',
+    task_id: '', start_time: '', end_time: '', notes: '', completion_answer: '',
   });
   const [focus, setFocus]           = useState(null);
   const [difficulty, setDifficulty] = useState(null);
@@ -53,13 +60,14 @@ export default function ManualEntryForm({ tasks, onSaved }) {
     try {
       await manualSession({
         ...form,
-        task_id:          form.task_id || null,
-        notes:            form.notes || null,
-        focus_score:      focus,
+        task_id:           form.task_id || null,
+        notes:             form.notes || null,
+        completion_answer: form.task_id ? (form.completion_answer || null) : null,
+        focus_score:       focus,
         difficulty_rating: difficulty,
       });
       toast.success('Session logged');
-      setForm({ task_id: '', start_time: '', end_time: '', notes: '' });
+      setForm({ task_id: '', start_time: '', end_time: '', notes: '', completion_answer: '' });
       setFocus(null);
       setDifficulty(null);
       onSaved?.();
@@ -76,11 +84,28 @@ export default function ManualEntryForm({ tasks, onSaved }) {
 
       <div className={styles.field}>
         <label>Task (optional)</label>
-        <select value={form.task_id} onChange={e => set('task_id', e.target.value)}>
+        <select
+          value={form.task_id}
+          onChange={e => {
+            const task_id = e.target.value;
+            setForm(f => ({ ...f, task_id, completion_answer: task_id ? f.completion_answer : '' }));
+          }}
+        >
           <option value="">— No task —</option>
-          {tasks.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          {tasks.filter(t => t.status !== 'completed').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
       </div>
+
+      {form.task_id && (
+        <div className={styles.field}>
+          <label>Did you complete the task?</label>
+          <select value={form.completion_answer} onChange={e => set('completion_answer', e.target.value)}>
+            {COMPLETION_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className={styles.row}>
         <Input id="manual-start" label="Start time" type="datetime-local" value={form.start_time} onChange={e => set('start_time', e.target.value)} required />

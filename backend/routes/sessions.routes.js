@@ -11,6 +11,7 @@ router.patch('/:id/stop', ctrl.stopSession);
 router.patch('/:id/reflect', ctrl.reflectSession);
 router.post('/manual',
   body('start_time').isISO8601(),
+  body('completion_answer').optional({ nullable: true }).isIn(['yes', 'partially', 'no']),
   validate,
   ctrl.manualEntry
 );

@@ -43,12 +43,16 @@ function Stars({ value, title }) {
 }
 
 export default function TrackerPage() {
-  const { tasks } = useTasks();
-  const { sessions, loading, remove, refresh } = useSessions({ limit: 50 });
+  const { tasks, refresh: refreshTasks } = useTasks();
+  const { sessions, loading, remove, refresh: refreshSessions } = useSessions({ limit: 50 });
   const { isRunning, handleStart } = useTimer();
   const [cleaningUp, setCleaningUp] = useState(false);
 
   const incompleteSessions = sessions.filter(s => !s.end_time || !s.duration || s.duration === 0);
+
+  async function handleSessionSaved() {
+    await Promise.all([refreshSessions(), refreshTasks()]);
+  }
 
   async function handleDelete(id) {
     if (!window.confirm('Delete this session? This cannot be undone.')) return;
@@ -64,7 +68,7 @@ export default function TrackerPage() {
     setCleaningUp(true);
     try {
       await Promise.all(incompleteSessions.map(s => deleteSession(s.id)));
-      await refresh();
+      await refreshSessions();
     } finally {
       setCleaningUp(false);
     }
@@ -79,7 +83,7 @@ export default function TrackerPage() {
       await reflectSession(session.id, { resume_later: false });
       const task = tasks.find(t => t.id === session.task_id);
       await handleStart(session.task_id, task?.name || 'Untitled session');
-      refresh();
+      refreshSessions();
     } catch {
       toast.error('Failed to resume session');
     }
@@ -89,10 +93,10 @@ export default function TrackerPage() {
     <div className={styles.page}>
       <div className={styles.left}>
         <Card>
-          <TimerWidget tasks={tasks} onSessionSaved={refresh} />
+          <TimerWidget tasks={tasks} onSessionSaved={handleSessionSaved} />
         </Card>
         <Card>
-          <ManualEntryForm tasks={tasks} onSaved={refresh} />
+          <ManualEntryForm tasks={tasks} onSaved={handleSessionSaved} />
         </Card>
       </div>
 

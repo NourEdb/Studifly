@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import useTimer from '../../hooks/useTimer';
 import TimerDisplay from './TimerDisplay';
 import PostSessionModal from './PostSessionModal';
@@ -20,6 +21,29 @@ function sendNotif(title, body) {
   }
 }
 
+function playChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new AudioCtx();
+    const now = ctx.currentTime;
+    [880, 1320].forEach((freq, i) => {
+      const start = now + i * 0.15;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.4);
+    });
+  } catch {
+    // AudioContext unsupported or blocked — skip the chime
+  }
+}
+
 function fmtDuration(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -29,6 +53,8 @@ function fmtDuration(seconds) {
 export default function TimerWidget({ tasks, onSessionSaved }) {
   const [selectedTask, setSelectedTask]     = useState('');
   const [stoppedSession, setStoppedSession] = useState(null);
+  const [plannedMinutes, setPlannedMinutes] = useState(null);
+  const plannedNotifiedRef                  = useRef(false);
   const { elapsedSeconds, isRunning, activeSession, taskTotalSeconds, handleStart, handleStop } = useTimer();
 
   const [pomMode, setPomMode]         = useState(false);
@@ -64,6 +90,8 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
   async function start() {
     if (pomMode) requestNotifPermission();
     const task = tasks.find(t => t.id === parseInt(selectedTask));
+    plannedNotifiedRef.current = false;
+    setPlannedMinutes(task?.planned_time > 0 ? task.planned_time : null);
     await handleStart(selectedTask ? parseInt(selectedTask) : null, task?.name || 'Untitled session');
   }
 
@@ -74,7 +102,17 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
       setPomPhase('work');
       setPomSecsLeft(WORK_SECS);
     }
+    setPlannedMinutes(null);
   }
+
+  useEffect(() => {
+    if (!isRunning || !plannedMinutes || plannedNotifiedRef.current) return;
+    if (elapsedSeconds >= plannedMinutes * 60) {
+      plannedNotifiedRef.current = true;
+      playChime();
+      toast("⏰ You've reached your planned time! Keep going or wrap up?", { duration: 6000 });
+    }
+  }, [elapsedSeconds, isRunning, plannedMinutes]);
 
   function switchMode(toPom) {
     if (isRunning) return;
@@ -85,6 +123,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
 
   function handleReflectionDone() {
     setStoppedSession(null);
+    setSelectedTask('');
     onSessionSaved?.();
   }
 
@@ -150,7 +189,6 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
       {stoppedSession && (
         <PostSessionModal
           session={stoppedSession}
-          onClose={() => { setStoppedSession(null); onSessionSaved?.(); }}
           onDone={handleReflectionDone}
         />
       )}

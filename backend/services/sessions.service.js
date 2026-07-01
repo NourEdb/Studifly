@@ -80,15 +80,29 @@ async function reflect(userId, id, data) {
   return updated;
 }
 
-async function manual(userId, { task_id, start_time, end_time, duration, notes, focus_score, difficulty_rating }) {
+async function manual(userId, { task_id, start_time, end_time, duration, notes, focus_score, difficulty_rating, completion_answer }) {
   const dur = duration || Math.round((new Date(end_time) - new Date(start_time)) / 1000);
+  const answer = completion_answer || null;
+  const statusMap = { yes: 'completed', partially: 'partial', no: 'needs_more_time' };
+  const status = answer ? statusMap[answer] : 'completed';
+
   const session = await db.get(
     `INSERT INTO study_sessions
-       (user_id, task_id, start_time, end_time, duration, is_manual, notes, focus_score, difficulty_rating, status)
-     VALUES (?,?,?,?,?,1,?,?,?,'completed') RETURNING *`,
-    [userId, task_id || null, start_time, end_time || null, dur, notes || null, focus_score || null, difficulty_rating || null]
+       (user_id, task_id, start_time, end_time, duration, is_manual, notes, focus_score, difficulty_rating, status, completion_answer)
+     VALUES (?,?,?,?,?,1,?,?,?,?,?) RETURNING *`,
+    [userId, task_id || null, start_time, end_time || null, dur, notes || null, focus_score || null, difficulty_rating || null, status, answer]
   );
   gamification.onSessionComplete(userId, session).catch(err => console.error('[gamification] onSessionComplete failed:', err.message));
+
+  // "Yes!" answer auto-completes the linked task, same as the post-session reflection checkbox
+  if (answer === 'yes' && task_id) {
+    await db.run(
+      `UPDATE tasks SET status = 'completed' WHERE id = ? AND user_id = ?`,
+      [task_id, userId]
+    );
+    gamification.onTaskComplete(userId, task_id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
+  }
+
   return session;
 }
 
