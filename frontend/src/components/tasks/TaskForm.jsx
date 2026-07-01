@@ -10,17 +10,12 @@ const BUILT_IN_ACTIVITY_TYPES = new Set(['reading', 'practice', 'watching', 'oth
 
 const ACTIVITY_TYPES = ['reading', 'practice', 'watching', 'other'];
 
-function minsToHHMM(mins) {
-  if (!mins) return '';
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+function minsToHours(mins) {
+  return String(mins ? Math.floor(mins / 60) : 0);
 }
 
-function hhmmToMins(hhmm) {
-  if (!hhmm) return 0;
-  const [h, m] = hhmm.split(':').map(Number);
-  return (h || 0) * 60 + (m || 0);
+function minsToMinutes(mins) {
+  return String(mins ? mins % 60 : 0);
 }
 
 // due_date is stored as a plain "YYYY-MM-DD" string — parse/format using local
@@ -47,7 +42,8 @@ function initForm(initial) {
     course_id:     initial?.course_id || '',
     activity_type: isCustom ? '__custom__' : rawType,
     customType:    isCustom ? rawType : '',
-    planned_time:  minsToHHMM(initial?.planned_time),
+    planned_hours:   minsToHours(initial?.planned_time),
+    planned_minutes: minsToMinutes(initial?.planned_time),
     due_date:      parseDueDate(initial?.due_date),
   };
 }
@@ -85,12 +81,13 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
     if (!finalType) { setError('Please enter a custom activity type'); return; }
     setError('');
     setLoading(true);
+    const { planned_hours, planned_minutes, ...rest } = form;
     try {
       await onSave({
-        ...form,
+        ...rest,
         activity_type: finalType,
         course_id:     form.course_id || null,
-        planned_time:  hhmmToMins(form.planned_time),
+        planned_time:  (parseInt(planned_hours, 10) || 0) * 60 + (parseInt(planned_minutes, 10) || 0),
         due_date:      formatDueDate(form.due_date),
       });
       onClose();
@@ -149,15 +146,63 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
         )}
 
         <div className={styles.row}>
-          <Input
-            id="task-time"
-            label="Planned time (HH:MM)"
-            type="text"
-            placeholder="00:00"
-            pattern="[0-9]{1,3}:[0-5][0-9]"
-            value={form.planned_time}
-            onChange={e => set('planned_time', e.target.value)}
-          />
+          <div className={styles.field}>
+            <label htmlFor="task-hours">Planned time</label>
+            <div className={styles.timeGroup}>
+              <input
+                id="task-hours"
+                className={styles.timeHours}
+                type="number"
+                min="0"
+                list="task-hours-options"
+                placeholder="Hrs"
+                value={form.planned_hours}
+                onChange={e => set('planned_hours', e.target.value)}
+                aria-label="Hours"
+              />
+              <datalist id="task-hours-options">
+                <option value="0" />
+                <option value="1" />
+                <option value="2" />
+                <option value="3" />
+                <option value="4" />
+                <option value="5" />
+                <option value="6" />
+                <option value="7" />
+                <option value="8" />
+                <option value="9" />
+                <option value="10" />
+              </datalist>
+              <span className={styles.timeUnit}>h</span>
+              <input
+                id="task-minutes"
+                className={styles.timeMinutes}
+                type="number"
+                min="0"
+                max="59"
+                list="task-minutes-options"
+                placeholder="Min"
+                value={form.planned_minutes}
+                onChange={e => set('planned_minutes', e.target.value)}
+                aria-label="Minutes"
+              />
+              <datalist id="task-minutes-options">
+                <option value="0" />
+                <option value="5" />
+                <option value="10" />
+                <option value="15" />
+                <option value="20" />
+                <option value="25" />
+                <option value="30" />
+                <option value="35" />
+                <option value="40" />
+                <option value="45" />
+                <option value="50" />
+                <option value="55" />
+              </datalist>
+              <span className={styles.timeUnit}>m</span>
+            </div>
+          </div>
           <DateTimePicker
             id="task-due"
             label="Due date (optional)"
