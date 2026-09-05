@@ -16,7 +16,7 @@ const startSession = async (req, res, next) => {
 
 const stopSession = async (req, res, next) => {
   try {
-    const session = await svc.stop(req.user.id, req.params.id);
+    const session = await svc.stop(req.user.id, req.params.id, req.body.break_seconds);
     res.json(session);
     notifyBuddies(req.user.id, req.user.username, 'buddy_stopped_studying');
   } catch (e) { next(e); }

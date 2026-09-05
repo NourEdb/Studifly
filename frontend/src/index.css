@@ -5,6 +5,7 @@
 }
 
 :root {
+  color-scheme: light;
   --color-purple: #6C4DC4;
   --color-purple-light: #8B6DD8;
   --color-purple-dark: #5239A8;
@@ -38,6 +39,7 @@
 }
 
 [data-theme="dark"] {
+  color-scheme: dark;
   --color-bg: #0F0C1A;
   --color-surface: #1A1630;
   --color-border: #2D2847;

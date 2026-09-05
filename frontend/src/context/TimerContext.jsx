@@ -1,31 +1,197 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { playChime } from '../utils/chime';
+import { useAuth } from './AuthContext';
 
 const TimerContext = createContext(null);
 
+const SNAPSHOT_KEY  = 'studifly_timer_snapshot';
+const LS_WORK_KEY    = 'studifly_pomodoro_work_minutes';
+const LS_BREAK_KEY   = 'studifly_pomodoro_break_minutes';
+const WORK_MIN_DEFAULT  = 25;
+const BREAK_MIN_DEFAULT = 5;
+
+function loadStoredMinutes(key, fallback) {
+  const n = parseInt(localStorage.getItem(key), 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+// Only a RUNNING timer is persisted — idle/default state doesn't need to survive a refresh.
+function loadSnapshot() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    if (!raw) return null;
+    const snap = JSON.parse(raw);
+    return snap?.activeSession && snap?.startedAt ? snap : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveSnapshot(snap) {
+  try {
+    if (snap) localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snap));
+    else localStorage.removeItem(SNAPSHOT_KEY);
+  } catch {
+    // storage unavailable (private browsing, quota) — timer just won't survive a refresh
+  }
+}
+
+function sendNotif(title, body) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, { body });
+  }
+}
+
 export function TimerProvider({ children }) {
-  const [activeSession,     setActiveSession]     = useState(null);
-  const [startedAt,         setStartedAt]         = useState(null);
-  const [elapsedSeconds,    setElapsedSeconds]    = useState(0);
-  const [isRunning,         setIsRunning]         = useState(false);
-  const [taskTotalSeconds,  setTaskTotalSeconds]  = useState(null);
+  const { user, loading: authLoading } = useAuth();
+  const prevUserRef = useRef(undefined);
+  const restored = loadSnapshot();
+
+  const [activeSession,    setActiveSession]    = useState(restored?.activeSession ?? null);
+  const [startedAt,        setStartedAt]        = useState(restored?.startedAt ?? null);
+  const [elapsedSeconds,   setElapsedSeconds]   = useState(0);
+  const [isRunning,        setIsRunning]        = useState(!!restored);
+  const [taskTotalSeconds, setTaskTotalSeconds] = useState(restored?.taskTotalSeconds ?? null);
+  const [plannedSeconds,   setPlannedSeconds]   = useState(restored?.plannedSeconds ?? null);
+
+  const [pomMode,        setPomModeState]     = useState(restored?.pomMode ?? false);
+  const [pomPhase,       setPomPhase]         = useState(restored?.pomPhase ?? 'work');
+  const [phaseStartedAt, setPhaseStartedAt]   = useState(restored?.phaseStartedAt ?? null);
+  const [workMinutes,    setWorkMinutesState] = useState(() => loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT));
+  const [breakMinutes,   setBreakMinutesState]= useState(() => loadStoredMinutes(LS_BREAK_KEY, BREAK_MIN_DEFAULT));
+  const [pomSecondsLeft, setPomSecondsLeft]   = useState(() => {
+    if (restored?.pomMode && restored?.phaseStartedAt) {
+      const dur = (restored.pomPhase === 'break'
+        ? loadStoredMinutes(LS_BREAK_KEY, BREAK_MIN_DEFAULT)
+        : loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT)) * 60;
+      return Math.max(0, dur - Math.floor((Date.now() - restored.phaseStartedAt) / 1000));
+    }
+    return loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT) * 60;
+  });
+  // Seconds spent on completed break intervals so far this session (Pomodoro only).
+  // The current, still-in-progress break (if any) is added on top of this at read time.
+  const [accumulatedBreakSeconds, setAccumulatedBreakSeconds] = useState(restored?.accumulatedBreakSeconds ?? 0);
+
   const intervalRef = useRef(null);
+  const plannedNotifiedRef = useRef(false);
+  // Mirrors current state for the interval closure below, so it always reads fresh values
+  // instead of the ones captured when the interval was created.
+  const stateRef = useRef({});
+  stateRef.current = { pomMode, pomPhase, phaseStartedAt, workMinutes, breakMinutes, startedAt, plannedSeconds };
 
   useEffect(() => {
     clearInterval(intervalRef.current);
-    if (isRunning && startedAt !== null) {
-      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
-      intervalRef.current = setInterval(() => {
-        setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
-      }, 1000);
+    if (!isRunning || startedAt === null) return;
+
+    function tick() {
+      const s = stateRef.current;
+      const elapsedNow = Math.floor((Date.now() - s.startedAt) / 1000);
+      setElapsedSeconds(elapsedNow);
+
+      // Free timer: chime + notify once when planned time is reached, keep counting.
+      // Runs here (not in a page component) so it fires regardless of which page is
+      // open, or whether the tab is backgrounded.
+      if (!s.pomMode && s.plannedSeconds && !plannedNotifiedRef.current && elapsedNow >= s.plannedSeconds) {
+        plannedNotifiedRef.current = true;
+        playChime();
+        sendNotif('Studifly', "You've reached your planned time! Keep going or wrap up?");
+        toast("⏰ You've reached your planned time! Keep going or wrap up?", { duration: 6000 });
+      }
+
+      if (!s.pomMode || s.phaseStartedAt === null) return;
+
+      let phase       = s.pomPhase;
+      let phaseStart  = s.phaseStartedAt;
+      let durSec      = (phase === 'work' ? s.workMinutes : s.breakMinutes) * 60;
+      let elapsed     = (Date.now() - phaseStart) / 1000;
+      let changed     = false;
+      let breakDelta  = 0;
+
+      // Loop (rather than a single step) so a long-backgrounded tab or a page
+      // refresh after several phases catches up to the correct current phase.
+      while (elapsed >= durSec) {
+        if (phase === 'break') breakDelta += durSec;
+        phaseStart += durSec * 1000;
+        phase       = phase === 'work' ? 'break' : 'work';
+        durSec      = (phase === 'work' ? s.workMinutes : s.breakMinutes) * 60;
+        elapsed     = (Date.now() - phaseStart) / 1000;
+        changed     = true;
+      }
+
+      if (breakDelta > 0) setAccumulatedBreakSeconds(prev => prev + breakDelta);
+
+      if (changed) {
+        playChime();
+        sendNotif('Studifly', phase === 'break' ? 'Time to take a break!' : 'Back to work!');
+        setPomPhase(phase);
+        setPhaseStartedAt(phaseStart);
+      }
+      setPomSecondsLeft(Math.max(0, Math.ceil(durSec - elapsed)));
     }
+
+    tick();
+    intervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(intervalRef.current);
   }, [isRunning, startedAt]);
 
-  function startTimer(session, taskTotal = null) {
+  // Snapshot a running timer to localStorage so a page refresh can restore it.
+  useEffect(() => {
+    if (isRunning && activeSession) {
+      saveSnapshot({
+        activeSession, startedAt, pomMode, pomPhase, phaseStartedAt,
+        taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds,
+      });
+    } else {
+      saveSnapshot(null);
+    }
+  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds]);
+
+  function setWorkMinutes(raw) {
+    const n = Math.max(1, parseInt(raw, 10) || 1);
+    setWorkMinutesState(n);
+    localStorage.setItem(LS_WORK_KEY, String(n));
+    if (!isRunning) setPomSecondsLeft(n * 60);
+    return n;
+  }
+
+  function setBreakMinutes(raw) {
+    const n = Math.max(1, parseInt(raw, 10) || 1);
+    setBreakMinutesState(n);
+    localStorage.setItem(LS_BREAK_KEY, String(n));
+    return n;
+  }
+
+  function setPomMode(on) {
+    if (isRunning) return;
+    setPomModeState(on);
+    setPomPhase('work');
+    setPomSecondsLeft(workMinutes * 60);
+  }
+
+  function startTimer(session, taskTotal = null, plannedMinutes = null) {
+    const now = Date.now();
     setActiveSession(session);
-    setStartedAt(Date.now());
+    setStartedAt(now);
     setTaskTotalSeconds(taskTotal > 0 ? taskTotal : null);
+    setPlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null);
+    setAccumulatedBreakSeconds(0);
+    plannedNotifiedRef.current = false;
     setIsRunning(true);
+    if (pomMode) {
+      setPomPhase('work');
+      setPhaseStartedAt(now);
+      setPomSecondsLeft(workMinutes * 60);
+    }
+  }
+
+  // Total break time for the CURRENT session, including any break interval
+  // still in progress right now — used when Stop & Save is pressed.
+  function getBreakSeconds() {
+    const partial = (pomMode && pomPhase === 'break' && phaseStartedAt !== null)
+      ? Math.floor((Date.now() - phaseStartedAt) / 1000)
+      : 0;
+    return accumulatedBreakSeconds + partial;
   }
 
   function stopTimer() {
@@ -34,10 +200,30 @@ export function TimerProvider({ children }) {
     setStartedAt(null);
     setElapsedSeconds(0);
     setTaskTotalSeconds(null);
+    setPlannedSeconds(null);
+    setAccumulatedBreakSeconds(0);
+    plannedNotifiedRef.current = false;
+    setPhaseStartedAt(null);
+    setPomPhase('work');
+    setPomSecondsLeft(workMinutes * 60);
+    saveSnapshot(null);
   }
 
+  // Reset on logout so a running timer isn't restored into the next user's
+  // session on a shared computer. Ignored while auth is still resolving on
+  // boot (loading=true), so a restored snapshot survives a page refresh.
+  useEffect(() => {
+    if (authLoading) return;
+    if (prevUserRef.current && !user) stopTimer();
+    prevUserRef.current = user;
+  }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <TimerContext.Provider value={{ activeSession, elapsedSeconds, isRunning, taskTotalSeconds, startTimer, stopTimer }}>
+    <TimerContext.Provider value={{
+      activeSession, elapsedSeconds, isRunning, taskTotalSeconds,
+      pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes,
+      startTimer, stopTimer, setPomMode, setWorkMinutes, setBreakMinutes, getBreakSeconds,
+    }}>
       {children}
     </TimerContext.Provider>
   );

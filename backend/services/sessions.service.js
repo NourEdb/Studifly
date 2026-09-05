@@ -9,15 +9,19 @@ async function start(userId, { task_id }) {
   );
 }
 
-async function stop(userId, id) {
+async function stop(userId, id, breakSeconds = 0) {
   const session = await db.get('SELECT * FROM study_sessions WHERE id = ? AND user_id = ?', [id, userId]);
   if (!session) { const e = new Error('Not found'); e.status = 404; throw e; }
   if (session.end_time) { const e = new Error('Session already stopped'); e.status = 400; throw e; }
   const end_time = new Date();
-  const duration = Math.round((end_time - new Date(session.start_time)) / 1000);
+  const totalSeconds = Math.round((end_time - new Date(session.start_time)) / 1000);
+  // Clamp so a clock hiccup (or a client miscount) can never push break time past the
+  // total elapsed time and produce a negative duration.
+  const breakSec = Math.max(0, Math.min(Math.round(breakSeconds) || 0, totalSeconds));
+  const duration = totalSeconds - breakSec;
   const updated = await db.get(
-    'UPDATE study_sessions SET end_time = NOW(), duration = ? WHERE id = ? RETURNING *',
-    [duration, id]
+    'UPDATE study_sessions SET end_time = NOW(), duration = ?, break_seconds = ? WHERE id = ? RETURNING *',
+    [duration, breakSec, id]
   );
   gamification.onSessionComplete(userId, updated).catch(err => console.error('[gamification] onSessionComplete failed:', err.message));
   return updated;

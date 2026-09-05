@@ -90,9 +90,16 @@
 
 :global(.dtp-calendar .react-datepicker__time-container) {
   border-left: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+:global(.dtp-calendar .react-datepicker__time),
+:global(.dtp-calendar .react-datepicker__time-box) {
+  background: var(--color-surface);
 }
 
 :global(.dtp-calendar .react-datepicker__time-list-item) {
+  background: var(--color-surface);
   color: var(--color-text);
 }
 

@@ -7,7 +7,11 @@ const ctrl = require('../controllers/sessions.controller');
 router.use(auth);
 
 router.post('/start', ctrl.startSession);
-router.patch('/:id/stop', ctrl.stopSession);
+router.patch('/:id/stop',
+  body('break_seconds').optional({ nullable: true }).isInt({ min: 0 }),
+  validate,
+  ctrl.stopSession
+);
 router.patch('/:id/reflect', ctrl.reflectSession);
 router.post('/manual',
   body('start_time').isISO8601(),

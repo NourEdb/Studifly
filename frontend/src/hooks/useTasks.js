@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTasks, createTask, updateTask, deleteTask } from '../api/tasks.api';
+import { getTasks, createTask, updateTask, updateTaskStatus, deleteTask } from '../api/tasks.api';
 import toast from 'react-hot-toast';
 
 export default function useTasks(filters = {}) {
@@ -38,5 +38,17 @@ export default function useTasks(filters = {}) {
     setTasks(prev => prev.filter(t => t.id !== id));
   }
 
-  return { tasks, loading, add, edit, remove, refresh: fetch };
+  async function setStatus(id, status) {
+    const task = await updateTaskStatus(id, status);
+    setTasks(prev => prev.map(t => t.id === id ? task : t));
+    return task;
+  }
+
+  // Patches the in-memory list only (no API call) — for reflecting a status
+  // change made elsewhere (e.g. the timer already updated the backend).
+  function updateLocal(id, patch) {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
+  }
+
+  return { tasks, loading, add, edit, remove, setStatus, updateLocal, refresh: fetch };
 }

@@ -37,7 +37,9 @@ function Stars({ value, title }) {
   if (!value) return null;
   return (
     <span className={styles.stars} title={title}>
-      {'★'.repeat(value)}{'☆'.repeat(5 - value)}
+      <span className={styles.starsFilled}>{'★'.repeat(value)}</span>
+      <span className={styles.starsEmpty}>{'☆'.repeat(5 - value)}</span>
+      <span className={styles.starsLabel}>{value}/5</span>
     </span>
   );
 }

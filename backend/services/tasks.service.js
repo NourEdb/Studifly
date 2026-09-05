@@ -81,10 +81,24 @@ async function update(userId, id, body) {
   return getOne(userId, id);
 }
 
+const VALID_STATUSES = ['pending', 'in_progress', 'completed'];
+
+// Separate from update() on purpose: the edit form's status field is intentionally
+// excluded there (status is normally derived from session reflections), but the
+// timer and the task list's manual complete/un-complete toggle need an explicit,
+// narrow way to set it.
+async function updateStatus(userId, id, status) {
+  if (!VALID_STATUSES.includes(status)) { const e = new Error('Invalid status'); e.status = 400; throw e; }
+  const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
+  if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
+  await db.run('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
+  return getOne(userId, id);
+}
+
 async function remove(userId, id) {
   const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
   if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
   await db.run('DELETE FROM tasks WHERE id = ?', [id]);
 }
 
-module.exports = { getAll, getOne, getCustomActivityTypes, create, update, remove };
+module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove };

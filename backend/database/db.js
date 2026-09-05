@@ -24,6 +24,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/014_study_blocks.sql'),
   path.join(__dirname, 'migrations/015_friendships.sql'),
   path.join(__dirname, 'migrations/016_mood_checkins.sql'),
+  path.join(__dirname, 'migrations/017_session_break_seconds.sql'),
 ];
 
 async function initDb() {

@@ -1,13 +1,16 @@
 import { useTimerContext } from '../context/TimerContext';
 import { startSession, stopSession } from '../api/sessions.api';
 import { getTaskTotal } from '../api/sessions.api';
+import { updateTaskStatus } from '../api/tasks.api';
+import { unlockAudio } from '../utils/chime';
 import toast from 'react-hot-toast';
 
 export default function useTimer() {
   const ctx = useTimerContext();
 
-  async function handleStart(taskId, taskName) {
+  async function handleStart(taskId, taskName, plannedMinutes = null) {
     if (ctx.isRunning) return;
+    unlockAudio(); // must run inside this user-gesture handler so later chimes are allowed to play
     try {
       const session = await startSession({ task_id: taskId });
 
@@ -20,9 +23,12 @@ export default function useTimer() {
         } catch (err) {
           console.error('[useTimer] getTaskTotal failed:', err);
         }
+        updateTaskStatus(taskId, 'in_progress').catch(err =>
+          console.error('[useTimer] failed to mark task in_progress:', err.message)
+        );
       }
 
-      ctx.startTimer({ ...session, taskName }, taskTotal);
+      ctx.startTimer({ ...session, taskName }, taskTotal, plannedMinutes);
       toast.success('Timer started');
     } catch {
       toast.error('Failed to start timer');
@@ -32,7 +38,8 @@ export default function useTimer() {
   async function handleStop() {
     if (!ctx.isRunning || !ctx.activeSession) return null;
     try {
-      const session = await stopSession(ctx.activeSession.id);
+      const breakSeconds = ctx.getBreakSeconds();
+      const session = await stopSession(ctx.activeSession.id, breakSeconds);
       ctx.stopTimer();
       toast.success('Session saved');
       return session;
@@ -47,6 +54,14 @@ export default function useTimer() {
     isRunning:        ctx.isRunning,
     activeSession:    ctx.activeSession,
     taskTotalSeconds: ctx.taskTotalSeconds,
+    pomMode:          ctx.pomMode,
+    pomPhase:         ctx.pomPhase,
+    pomSecondsLeft:   ctx.pomSecondsLeft,
+    workMinutes:      ctx.workMinutes,
+    breakMinutes:     ctx.breakMinutes,
+    setPomMode:       ctx.setPomMode,
+    setWorkMinutes:   ctx.setWorkMinutes,
+    setBreakMinutes:  ctx.setBreakMinutes,
     handleStart,
     handleStop,
   };

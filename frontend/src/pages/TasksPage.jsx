@@ -5,7 +5,7 @@ import TaskList from '../components/tasks/TaskList';
 
 export default function TasksPage() {
   const [filters, setFilters] = useState({});
-  const { tasks, loading, add, edit, remove } = useTasks(filters);
+  const { tasks, loading, add, edit, remove, setStatus, updateLocal } = useTasks(filters);
   const { courses } = useCourses();
 
   if (loading) return <p style={{ color: 'var(--color-text-muted)' }}>Loading…</p>;
@@ -17,6 +17,8 @@ export default function TasksPage() {
       add={add}
       edit={edit}
       remove={remove}
+      setStatus={setStatus}
+      updateLocal={updateLocal}
       filters={filters}
       setFilters={setFilters}
     />

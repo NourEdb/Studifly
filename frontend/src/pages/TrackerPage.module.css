@@ -77,7 +77,10 @@
 .sessionTask { font-weight: 500; font-size: 0.875rem; }
 .sessionDuration { font-weight: 700; color: var(--color-purple); min-width: 50px; text-align: right; }
 
-.stars { font-size: 0.75rem; color: #f5a623; letter-spacing: 1px; }
+.stars { display: inline-flex; align-items: center; gap: 4px; font-size: 0.75rem; letter-spacing: 1px; }
+.starsFilled { color: #f5a623; }
+.starsEmpty { color: var(--color-text-muted); opacity: 0.5; }
+.starsLabel { font-size: 0.7rem; color: var(--color-text-muted); letter-spacing: normal; font-weight: 600; }
 
 .resumeBtn {
   font-size: 0.75rem;

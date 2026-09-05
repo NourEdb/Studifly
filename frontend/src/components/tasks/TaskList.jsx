@@ -9,7 +9,7 @@ import useTimer from '../../hooks/useTimer';
 import useStudyBlocks from '../../hooks/useStudyBlocks';
 import styles from './TaskList.module.css';
 
-export default function TaskList({ tasks, courses, add, edit, remove, filters, setFilters }) {
+export default function TaskList({ tasks, courses, add, edit, remove, setStatus, updateLocal, filters, setFilters }) {
   const [showForm, setShowForm]       = useState(false);
   const [editing, setEditing]         = useState(null);
   const [planningTask, setPlanningTask] = useState(null);
@@ -43,7 +43,19 @@ export default function TaskList({ tasks, courses, add, edit, remove, filters, s
       toast.error(`Timer already running for "${activeSession?.taskName}"`);
       return;
     }
-    await handleStart(task.id, task.name);
+    const plannedMinutes = task.planned_time > 0 ? task.planned_time : null;
+    await handleStart(task.id, task.name, plannedMinutes);
+    updateLocal?.(task.id, { status: 'in_progress' });
+  }
+
+  async function handleToggleComplete(task) {
+    const next = task.status === 'completed' ? 'pending' : 'completed';
+    try {
+      await setStatus(task.id, next);
+      toast.success(next === 'completed' ? 'Task marked complete' : 'Task marked incomplete');
+    } catch {
+      toast.error('Failed to update task');
+    }
   }
 
   async function handleSaveBlock(data) {
@@ -109,6 +121,7 @@ export default function TaskList({ tasks, courses, add, edit, remove, filters, s
                 onEdit={task => { setEditing(task); setShowForm(true); }}
                 onDelete={handleDelete}
                 onStartTimer={handleStartTimer}
+                onToggleComplete={handleToggleComplete}
                 onPlanStudy={task => { setEditingBlock(null); setPlanningTask(task); }}
               />
               <StudyBlockList
