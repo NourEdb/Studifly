@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { playChime } from '../utils/chime';
+import { playChime, scheduleChime, cancelScheduledChime, unlockAudio } from '../utils/chime';
 import { useAuth } from './AuthContext';
 
 const TimerContext = createContext(null);
@@ -106,6 +106,55 @@ export function TimerProvider({ children }) {
   const stateRef = useRef({});
   stateRef.current = { pomMode, pomPhase, phaseStartedAt, workMinutes, breakMinutes, startedAt, plannedSeconds, plannedNotified };
 
+  // --- Precise, audio-clock-scheduled chimes -------------------------------
+  // The tick loop below is throttled in a backgrounded/hidden tab (browsers
+  // slow setInterval way down), so relying on it alone made both the
+  // Pomodoro phase chime and the free-timer planned-time chime fire late —
+  // by ~30s or more — after any real time in the background. Scheduling the
+  // actual sound on the AudioContext's own clock instead fires it precisely,
+  // since the audio rendering graph keeps running even when JS timers don't.
+  // The tick loop remains the single source of truth for state (phase,
+  // elapsed, notifications) — it just skips re-playing a chime that audio
+  // already handled, tracked via these two refs.
+  const lastAudioBoundaryMsRef = useRef(null); // last Pomodoro phase-boundary (ms) confirmed chimed via audio
+  const freeAudioFiredRef      = useRef(false); // whether the free-timer's scheduled chime already played
+
+  // Chains itself via the chime's onended: each time one phase's chime plays,
+  // it schedules the next one, so precision doesn't erode over a long
+  // backgrounded Pomodoro session spanning many phase changes.
+  function schedulePomodoroChime(phase, phaseStartMs, workMin, breakMin) {
+    let curPhase = phase;
+    let curStart = phaseStartMs;
+    let durSec   = (curPhase === 'work' ? workMin : breakMin) * 60;
+    let boundaryMs = curStart + durSec * 1000;
+
+    // Fast-forward silently through any boundaries already in the past (e.g.
+    // the initial schedule after restoring a session that ran unattended for
+    // a long time) — chime once for the current phase, not once per skipped
+    // one, matching the tick loop's own catch-up behavior.
+    while (boundaryMs <= Date.now()) {
+      curPhase = curPhase === 'work' ? 'break' : 'work';
+      curStart = boundaryMs;
+      durSec   = (curPhase === 'work' ? workMin : breakMin) * 60;
+      boundaryMs = curStart + durSec * 1000;
+    }
+
+    const delaySeconds = (boundaryMs - Date.now()) / 1000;
+    scheduleChime(delaySeconds, undefined, () => {
+      lastAudioBoundaryMsRef.current = boundaryMs;
+      schedulePomodoroChime(curPhase === 'work' ? 'break' : 'work', boundaryMs, workMin, breakMin);
+    });
+  }
+
+  // One-shot — the free timer's planned-time chime never repeats.
+  function scheduleFreeChime(plannedSec, startMs) {
+    const boundaryMs = startMs + plannedSec * 1000;
+    const delaySeconds = (boundaryMs - Date.now()) / 1000;
+    scheduleChime(delaySeconds, undefined, () => {
+      freeAudioFiredRef.current = true;
+    });
+  }
+
   useEffect(() => {
     clearInterval(intervalRef.current);
     if (!isRunning || startedAt === null || isPaused) return;
@@ -117,13 +166,19 @@ export function TimerProvider({ children }) {
 
       // Free timer: chime + notify once when planned time is reached, keep counting.
       // Runs here (not in a page component) so it fires regardless of which page is
-      // open, or whether the tab is backgrounded.
+      // open, or whether the tab is backgrounded. The actual sound is normally
+      // already played precisely by scheduleFreeChime()'s AudioContext-clock
+      // schedule (see below) — this only plays it if that didn't happen (e.g.
+      // AudioContext unavailable), guarded by freeAudioFiredRef so it can't
+      // double-play. State/notification/toast always fire from here regardless,
+      // since only the tick loop can currently drive React state and only the
+      // tick loop's notification path applies (Notifications can't be scheduled).
       // Defensive check (not just a truthy test): only a real, positive, finite
       // planned time can ever trigger this, however s.plannedSeconds got here.
       const hasPlannedTime = typeof s.plannedSeconds === 'number' && Number.isFinite(s.plannedSeconds) && s.plannedSeconds > 0;
       if (!s.pomMode && hasPlannedTime && !s.plannedNotified && elapsedNow >= s.plannedSeconds) {
         setPlannedNotified(true);
-        playChime();
+        if (!freeAudioFiredRef.current) playChime();
         sendNotif('Studifly', "You've reached your planned time! Keep going or wrap up?");
         toast("⏰ You've reached your planned time! Keep going or wrap up?", { duration: 6000 });
       }
@@ -151,7 +206,13 @@ export function TimerProvider({ children }) {
       if (breakDelta > 0) setAccumulatedBreakSeconds(prev => prev + breakDelta);
 
       if (changed) {
-        playChime();
+        // Same fallback pattern as the free-timer chime above: schedulePomodoroChime's
+        // onended chain normally already played this precisely and recorded the
+        // boundary it covered. Only play here if that boundary is still behind
+        // where the tick loop ended up (audio scheduling unavailable, or this
+        // tick simply won the race against a not-yet-fired schedule).
+        const audioAlreadyChimed = lastAudioBoundaryMsRef.current !== null && phaseStart <= lastAudioBoundaryMsRef.current;
+        if (!audioAlreadyChimed) playChime();
         sendNotif('Studifly', phase === 'break' ? 'Time to take a break!' : 'Back to work!');
         setPomPhase(phase);
         setPhaseStartedAt(phaseStart);
@@ -201,17 +262,26 @@ export function TimerProvider({ children }) {
 
   function startTimer(session, taskTotal = null, plannedMinutes = null) {
     const now = Date.now();
+    const planned = sanitizePlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null);
     setActiveSession(session);
     setStartedAt(now);
     setTaskTotalSeconds(taskTotal > 0 ? taskTotal : null);
-    setPlannedSeconds(sanitizePlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null));
+    setPlannedSeconds(planned);
     setAccumulatedBreakSeconds(0);
     setPlannedNotified(false);
     setIsRunning(true);
+
+    unlockAudio(); // Start is a genuine user gesture — allows scheduled sounds to play later
+    lastAudioBoundaryMsRef.current = null;
+    freeAudioFiredRef.current = false;
+
     if (pomMode) {
       setPomPhase('work');
       setPhaseStartedAt(now);
       setPomSecondsLeft(workMinutes * 60);
+      schedulePomodoroChime('work', now, workMinutes, breakMinutes);
+    } else if (planned) {
+      scheduleFreeChime(planned, now);
     }
   }
 
@@ -222,11 +292,16 @@ export function TimerProvider({ children }) {
     if (!isRunning || isPaused) return;
     setIsPaused(true);
     setPausedAt(Date.now());
+    // The AudioContext clock keeps running in real time regardless of our
+    // "paused" concept, so a pending schedule would otherwise fire at the
+    // wrong (real-world) moment. resumeTimer() reschedules from where this left off.
+    cancelScheduledChime();
   }
 
   function resumeTimer() {
     if (!isRunning || !isPaused) return;
     const pausedMs = Date.now() - pausedAt;
+    const newStartedAt = startedAt + pausedMs;
     // Shifting startedAt/phaseStartedAt forward makes the live display/countdown
     // continue smoothly (no jump) as if the pause never happened. That alone
     // doesn't reach the backend though — record the completed pause here so it
@@ -235,10 +310,23 @@ export function TimerProvider({ children }) {
     // only ever added the CURRENT pause on top of the accumulator, and once
     // resumed there was no "current pause" left to add.
     setAccumulatedBreakSeconds(prev => prev + Math.floor(pausedMs / 1000));
-    setStartedAt(prev => prev + pausedMs);
-    if (pomMode && phaseStartedAt !== null) setPhaseStartedAt(prev => prev + pausedMs);
+    setStartedAt(newStartedAt);
+    let newPhaseStartedAt = phaseStartedAt;
+    if (pomMode && phaseStartedAt !== null) {
+      newPhaseStartedAt = phaseStartedAt + pausedMs;
+      setPhaseStartedAt(newPhaseStartedAt);
+    }
     setIsPaused(false);
     setPausedAt(null);
+
+    unlockAudio(); // Resume is also a genuine user gesture
+    lastAudioBoundaryMsRef.current = null;
+    if (pomMode && newPhaseStartedAt !== null) {
+      schedulePomodoroChime(pomPhase, newPhaseStartedAt, workMinutes, breakMinutes);
+    } else if (!pomMode && plannedSeconds && !plannedNotified) {
+      freeAudioFiredRef.current = false;
+      scheduleFreeChime(plannedSeconds, newStartedAt);
+    }
   }
 
   // Total break time for the CURRENT session, including any break interval or
@@ -266,8 +354,27 @@ export function TimerProvider({ children }) {
     setPomSecondsLeft(workMinutes * 60);
     setIsPaused(false);
     setPausedAt(null);
+    cancelScheduledChime();
+    lastAudioBoundaryMsRef.current = null;
+    freeAudioFiredRef.current = false;
     saveSnapshot(null);
   }
+
+  // If we just restored an already-running (and not paused) session from the
+  // snapshot — i.e. this mount is a page reload mid-session, not a fresh
+  // start or an explicit resume — neither of those call sites ran, so the
+  // precise audio schedule needs to be established here instead. Runs once,
+  // using the values restored at construction time above.
+  useEffect(() => {
+    if (isRunning && !isPaused && startedAt !== null) {
+      if (pomMode && phaseStartedAt !== null) {
+        schedulePomodoroChime(pomPhase, phaseStartedAt, workMinutes, breakMinutes);
+      } else if (!pomMode && plannedSeconds && !plannedNotified) {
+        scheduleFreeChime(plannedSeconds, startedAt);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reset on logout so a running timer isn't restored into the next user's
   // session on a shared computer. Ignored while auth is still resolving on

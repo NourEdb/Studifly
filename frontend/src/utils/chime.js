@@ -65,32 +65,85 @@ export function unlockAudio() {
   }
 }
 
-// Plays the user's selected chime (or a specific one, if passed), synthesized
-// with the Web Audio API — no audio file needed.
+// Builds the oscillators for one chime starting at the given AudioContext
+// clock time (ctx.currentTime for "now", or ctx.currentTime + N for
+// "scheduled ahead"). Returns the created oscillator nodes so a caller can
+// cancel them before they play, or attach an onended hook to the last one.
+function buildTones(c, startTime, type) {
+  const def = CHIME_DEFS[type] || CHIME_DEFS[getChimeType()];
+  const { notes, toneDuration, gap, peakGain, attack } = def;
+  const oscillators = [];
+
+  notes.forEach((freq, i) => {
+    const start = startTime + i * (toneDuration + gap);
+    const osc = c.createOscillator();
+    const gain = c.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(peakGain, start + attack);
+    gain.gain.setValueAtTime(peakGain, start + toneDuration - Math.min(0.15, toneDuration * 0.3));
+    gain.gain.exponentialRampToValueAtTime(0.001, start + toneDuration);
+    osc.connect(gain).connect(c.destination);
+    osc.start(start);
+    osc.stop(start + toneDuration + 0.02);
+    oscillators.push(osc);
+  });
+
+  return oscillators;
+}
+
+// Plays the user's selected chime (or a specific one, if passed) right now,
+// synthesized with the Web Audio API — no audio file needed.
 export function playChime(type) {
   try {
     const c = getContext();
     if (!c) return;
     if (c.state === 'suspended') c.resume();
-
-    const def = CHIME_DEFS[type] || CHIME_DEFS[getChimeType()];
-    const { notes, toneDuration, gap, peakGain, attack } = def;
-
-    notes.forEach((freq, i) => {
-      const start = c.currentTime + i * (toneDuration + gap);
-      const osc = c.createOscillator();
-      const gain = c.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(peakGain, start + attack);
-      gain.gain.setValueAtTime(peakGain, start + toneDuration - Math.min(0.15, toneDuration * 0.3));
-      gain.gain.exponentialRampToValueAtTime(0.001, start + toneDuration);
-      osc.connect(gain).connect(c.destination);
-      osc.start(start);
-      osc.stop(start + toneDuration + 0.02);
-    });
+    buildTones(c, c.currentTime, type);
   } catch {
     // AudioContext unsupported or blocked — skip the chime
   }
+}
+
+// The chime currently scheduled ahead of time via scheduleChime(), if any —
+// only one can be pending at once (a new call/cancel supersedes it).
+let scheduledOscillators = [];
+
+// Schedules a chime to play `delaySeconds` from now using the AudioContext's
+// own clock, so it fires at the precise moment even if the tab is throttled
+// or hidden (setInterval-based timing drifts in the background; the audio
+// rendering graph does not). `onPlay`, if given, fires when the chime
+// actually finishes playing — NOT if it's cancelled first (see
+// cancelScheduledChime). Use it to mark "this already chimed" for a
+// tick-loop fallback to check against.
+export function scheduleChime(delaySeconds, type, onPlay) {
+  try {
+    const c = getContext();
+    if (!c) return;
+    if (c.state === 'suspended') c.resume();
+
+    cancelScheduledChime();
+    const startTime = c.currentTime + Math.max(0, delaySeconds);
+    const oscillators = buildTones(c, startTime, type);
+    if (onPlay && oscillators.length) {
+      oscillators[oscillators.length - 1].onended = onPlay;
+    }
+    scheduledOscillators = oscillators;
+  } catch {
+    // AudioContext unsupported or blocked — the tick-loop fallback will
+    // still catch a genuinely-reached threshold, just less precisely.
+  }
+}
+
+// Stops whatever is currently scheduled (if it hasn't played yet) without
+// firing its onPlay callback — used when a pause, stop, or phase change
+// invalidates a pending schedule so it can be replaced with a fresh one.
+export function cancelScheduledChime() {
+  scheduledOscillators.forEach(osc => {
+    osc.onended = null; // don't let a deliberate cancel look like "it played"
+    try { osc.stop(0); } catch { /* already stopped or already played */ }
+    try { osc.disconnect(); } catch { /* already disconnected */ }
+  });
+  scheduledOscillators = [];
 }
