@@ -52,7 +52,7 @@ async function create(userId, body) {
   const block = await db.get(
     `INSERT INTO study_blocks (user_id, task_id, plan_date, start_time, end_time, topic)
      VALUES (?, ?, ?, ?, ?, ?) RETURNING *`,
-    [userId, task_id, plan_date, start_time, end_time, topic || null]
+    [userId, task_id, plan_date || null, start_time || null, end_time || null, topic || null]
   );
   return getOne(userId, block.id);
 }
@@ -64,9 +64,9 @@ async function update(userId, id, body) {
   const fields = [];
   const params = [];
 
-  if (body.plan_date !== undefined)  { fields.push('plan_date = ?');  params.push(body.plan_date); }
-  if (body.start_time !== undefined) { fields.push('start_time = ?'); params.push(body.start_time); }
-  if (body.end_time !== undefined)   { fields.push('end_time = ?');   params.push(body.end_time); }
+  if (body.plan_date !== undefined)  { fields.push('plan_date = ?');  params.push(body.plan_date || null); }
+  if (body.start_time !== undefined) { fields.push('start_time = ?'); params.push(body.start_time || null); }
+  if (body.end_time !== undefined)   { fields.push('end_time = ?');   params.push(body.end_time || null); }
   if ('topic' in body)               { fields.push('topic = ?');      params.push(body.topic || null); }
 
   if (fields.length) {

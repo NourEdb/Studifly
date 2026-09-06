@@ -32,20 +32,28 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
   async function handleSubmit(e) {
     e.preventDefault();
 
-    if (usePicker && !selectedTaskId) { setError('Please select a task');        return; }
-    if (!form.plan_date)              { setError('Date is required');             return; }
-    if (!form.start_time)             { setError('Start time is required');       return; }
-    if (!form.end_time)               { setError('End time is required');         return; }
-    if (form.end_time <= form.start_time) { setError('End time must be after start time'); return; }
+    if (usePicker && !selectedTaskId) { setError('Please select a task'); return; }
+    if (Boolean(form.start_time) !== Boolean(form.end_time)) {
+      setError('Enter both a start and end time, or leave both blank');
+      return;
+    }
+    if (form.start_time && form.end_time && form.end_time <= form.start_time) {
+      setError('End time must be after start time');
+      return;
+    }
+    if ((form.start_time || form.end_time) && !form.plan_date) {
+      setError('A date is required when a time is set');
+      return;
+    }
 
     setSaving(true);
     setError('');
     try {
       await onSave({
         task_id:    Number(selectedTaskId) || task.id,
-        plan_date:  form.plan_date,
-        start_time: form.start_time,
-        end_time:   form.end_time,
+        plan_date:  form.plan_date || null,
+        start_time: form.start_time || null,
+        end_time:   form.end_time || null,
         topic:      form.topic.trim() || null,
       });
       onClose();
@@ -89,7 +97,7 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
           )}
 
           <label className={styles.label}>
-            Date *
+            Date (optional)
             <input
               className={styles.input}
               type="date"
@@ -101,7 +109,7 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
 
           <div className={styles.row}>
             <label className={styles.label}>
-              Start time *
+              Start time (optional)
               <input
                 className={styles.input}
                 type="time"
@@ -110,7 +118,7 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
               />
             </label>
             <label className={styles.label}>
-              End time *
+              End time (optional)
               <input
                 className={styles.input}
                 type="time"
@@ -119,6 +127,11 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
               />
             </label>
           </div>
+          <p className={styles.hint}>
+            Leave the date and time blank to add this as an unscheduled subtask — you
+            can come back and schedule it later. It won't appear on the weekly planner
+            until it has both a date and a time.
+          </p>
 
           <label className={styles.label}>
             What to cover (optional)

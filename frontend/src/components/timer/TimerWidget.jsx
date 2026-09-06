@@ -3,6 +3,7 @@ import useTimer from '../../hooks/useTimer';
 import { playChime, unlockAudio, getChimeType, setChimeType, CHIME_OPTIONS } from '../../utils/chime';
 import TimerDisplay from './TimerDisplay';
 import PostSessionModal from './PostSessionModal';
+import TimerFullscreen from './TimerFullscreen';
 import Button from '../ui/Button';
 import styles from './TimerWidget.module.css';
 
@@ -22,11 +23,13 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
   const [selectedTask, setSelectedTask]     = useState('');
   const [stoppedSession, setStoppedSession] = useState(null);
   const [chimeType, setChimeTypeUI]         = useState(getChimeType());
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
 
   const {
     elapsedSeconds, isRunning, activeSession, taskTotalSeconds,
     pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes,
     setPomMode, setWorkMinutes, setBreakMinutes,
+    isPaused, pauseTimer, resumeTimer,
     handleStart, handleStop,
   } = useTimer();
 
@@ -42,6 +45,11 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
   async function stop() {
     const session = await handleStop();
     if (session) setStoppedSession(session);
+  }
+
+  async function stopFromFullscreen() {
+    setFullscreenOpen(false);
+    await stop();
   }
 
   function handleReflectionDone() {
@@ -62,6 +70,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
   }
 
   const displaySeconds = pomMode ? pomSecondsLeft : elapsedSeconds;
+  const runningTask = activeSession?.task_id ? tasks.find(t => t.id === activeSession.task_id) : null;
 
   return (
     <>
@@ -119,6 +128,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
             </div>
           )}
           <TimerDisplay seconds={displaySeconds} />
+          {isPaused && <p className={styles.pausedLabel}>Paused</p>}
           {isRunning && activeSession?.taskName && (
             <p className={styles.taskLabel}>📌 {activeSession.taskName}</p>
           )}
@@ -151,9 +161,28 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
             </div>
           </div>
         ) : (
-          <Button onClick={stop} variant="danger" size="lg" fullWidth>■ Stop &amp; Save</Button>
+          <div className={styles.runningControls}>
+            {isPaused ? (
+              <Button onClick={resumeTimer} variant="secondary" size="lg" fullWidth>▶ Resume</Button>
+            ) : (
+              <Button onClick={pauseTimer} variant="secondary" size="lg" fullWidth>⏸ Pause</Button>
+            )}
+            <Button onClick={stop} variant="danger" size="lg" fullWidth>■ Stop &amp; Save</Button>
+            <button type="button" className={styles.fullscreenBtn} onClick={() => setFullscreenOpen(true)}>
+              ⛶ Full screen
+            </button>
+          </div>
         )}
       </div>
+
+      {fullscreenOpen && (
+        <TimerFullscreen
+          taskName={activeSession?.taskName}
+          courseName={runningTask?.course_name}
+          onStop={stopFromFullscreen}
+          onClose={() => setFullscreenOpen(false)}
+        />
+      )}
 
       {stoppedSession && (
         <PostSessionModal

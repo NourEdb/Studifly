@@ -143,4 +143,18 @@ async function remove(userId, id) {
   await db.run('DELETE FROM study_sessions WHERE id = ?', [id]);
 }
 
-module.exports = { start, stop, reflect, manual, getAll, getTaskTotal, remove };
+// True only if the user's MOST RECENT session is still open (no end_time) and
+// started within the last 12 hours. A session left open by a crashed tab,
+// closed browser, or logout without stopping it should not mark someone as
+// "studying" forever — this is the single source of truth for that check,
+// used both for live presence broadcasts and the Friends list query.
+async function hasActiveSession(userId) {
+  const row = await db.get(
+    `SELECT (end_time IS NULL AND start_time >= NOW() - INTERVAL '12 hours') AS active
+     FROM study_sessions WHERE user_id = ? ORDER BY start_time DESC LIMIT 1`,
+    [userId]
+  );
+  return !!row?.active;
+}
+
+module.exports = { start, stop, reflect, manual, getAll, getTaskTotal, remove, hasActiveSession };

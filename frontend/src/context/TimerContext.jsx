@@ -50,7 +50,11 @@ export function TimerProvider({ children }) {
 
   const [activeSession,    setActiveSession]    = useState(restored?.activeSession ?? null);
   const [startedAt,        setStartedAt]        = useState(restored?.startedAt ?? null);
-  const [elapsedSeconds,   setElapsedSeconds]   = useState(0);
+  const [elapsedSeconds,   setElapsedSeconds]   = useState(() => {
+    if (!restored) return 0;
+    const referencePoint = restored.isPaused && restored.pausedAt ? restored.pausedAt : Date.now();
+    return Math.max(0, Math.floor((referencePoint - restored.startedAt) / 1000));
+  });
   const [isRunning,        setIsRunning]        = useState(!!restored);
   const [taskTotalSeconds, setTaskTotalSeconds] = useState(restored?.taskTotalSeconds ?? null);
   const [plannedSeconds,   setPlannedSeconds]   = useState(restored?.plannedSeconds ?? null);
@@ -65,13 +69,22 @@ export function TimerProvider({ children }) {
       const dur = (restored.pomPhase === 'break'
         ? loadStoredMinutes(LS_BREAK_KEY, BREAK_MIN_DEFAULT)
         : loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT)) * 60;
-      return Math.max(0, dur - Math.floor((Date.now() - restored.phaseStartedAt) / 1000));
+      const referencePoint = restored.isPaused && restored.pausedAt ? restored.pausedAt : Date.now();
+      return Math.max(0, dur - Math.floor((referencePoint - restored.phaseStartedAt) / 1000));
     }
     return loadStoredMinutes(LS_WORK_KEY, WORK_MIN_DEFAULT) * 60;
   });
-  // Seconds spent on completed break intervals so far this session (Pomodoro only).
-  // The current, still-in-progress break (if any) is added on top of this at read time.
+  // Seconds spent on completed break intervals AND completed pauses so far this
+  // session. The current, still-in-progress break or pause (if any) is added on
+  // top of this at read time by getBreakSeconds().
   const [accumulatedBreakSeconds, setAccumulatedBreakSeconds] = useState(restored?.accumulatedBreakSeconds ?? 0);
+
+  // Persisted so a refresh while paused doesn't silently turn the paused time
+  // (while the page was reloading) into study time — pausedAt is a fixed
+  // timestamp, so however long the refresh itself takes is correctly still
+  // counted as paused, not worked.
+  const [isPaused, setIsPaused] = useState(restored?.isPaused ?? false);
+  const [pausedAt, setPausedAt] = useState(restored?.pausedAt ?? null);
 
   const intervalRef = useRef(null);
   const plannedNotifiedRef = useRef(false);
@@ -82,7 +95,7 @@ export function TimerProvider({ children }) {
 
   useEffect(() => {
     clearInterval(intervalRef.current);
-    if (!isRunning || startedAt === null) return;
+    if (!isRunning || startedAt === null || isPaused) return;
 
     function tick() {
       const s = stateRef.current;
@@ -133,7 +146,7 @@ export function TimerProvider({ children }) {
     tick();
     intervalRef.current = setInterval(tick, 1000);
     return () => clearInterval(intervalRef.current);
-  }, [isRunning, startedAt]);
+  }, [isRunning, startedAt, isPaused]);
 
   // Snapshot a running timer to localStorage so a page refresh can restore it.
   useEffect(() => {
@@ -141,11 +154,12 @@ export function TimerProvider({ children }) {
       saveSnapshot({
         activeSession, startedAt, pomMode, pomPhase, phaseStartedAt,
         taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds,
+        isPaused, pausedAt,
       });
     } else {
       saveSnapshot(null);
     }
-  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds]);
+  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds, isPaused, pausedAt]);
 
   function setWorkMinutes(raw) {
     const n = Math.max(1, parseInt(raw, 10) || 1);
@@ -185,13 +199,41 @@ export function TimerProvider({ children }) {
     }
   }
 
-  // Total break time for the CURRENT session, including any break interval
-  // still in progress right now — used when Stop & Save is pressed.
+  // Pausing counts the same as a break for duration purposes — neither is "work" —
+  // so it reuses the same accumulator/field sent to the backend as break_seconds,
+  // rather than needing a separate column.
+  function pauseTimer() {
+    if (!isRunning || isPaused) return;
+    setIsPaused(true);
+    setPausedAt(Date.now());
+  }
+
+  function resumeTimer() {
+    if (!isRunning || !isPaused) return;
+    const pausedMs = Date.now() - pausedAt;
+    // Shifting startedAt/phaseStartedAt forward makes the live display/countdown
+    // continue smoothly (no jump) as if the pause never happened. That alone
+    // doesn't reach the backend though — record the completed pause here so it
+    // still ends up in break_seconds when Stop & Save is pressed later. Without
+    // this, a resumed pause's duration was silently dropped: getBreakSeconds()
+    // only ever added the CURRENT pause on top of the accumulator, and once
+    // resumed there was no "current pause" left to add.
+    setAccumulatedBreakSeconds(prev => prev + Math.floor(pausedMs / 1000));
+    setStartedAt(prev => prev + pausedMs);
+    if (pomMode && phaseStartedAt !== null) setPhaseStartedAt(prev => prev + pausedMs);
+    setIsPaused(false);
+    setPausedAt(null);
+  }
+
+  // Total break time for the CURRENT session, including any break interval or
+  // pause still in progress right now — used when Stop & Save is pressed.
   function getBreakSeconds() {
-    const partial = (pomMode && pomPhase === 'break' && phaseStartedAt !== null)
-      ? Math.floor((Date.now() - phaseStartedAt) / 1000)
+    const referenceNow = isPaused ? pausedAt : Date.now();
+    const phasePartial = (pomMode && pomPhase === 'break' && phaseStartedAt !== null)
+      ? Math.max(0, Math.floor((referenceNow - phaseStartedAt) / 1000))
       : 0;
-    return accumulatedBreakSeconds + partial;
+    const pausePartial = isPaused ? Math.floor((Date.now() - pausedAt) / 1000) : 0;
+    return accumulatedBreakSeconds + phasePartial + pausePartial;
   }
 
   function stopTimer() {
@@ -206,6 +248,8 @@ export function TimerProvider({ children }) {
     setPhaseStartedAt(null);
     setPomPhase('work');
     setPomSecondsLeft(workMinutes * 60);
+    setIsPaused(false);
+    setPausedAt(null);
     saveSnapshot(null);
   }
 
@@ -221,8 +265,9 @@ export function TimerProvider({ children }) {
   return (
     <TimerContext.Provider value={{
       activeSession, elapsedSeconds, isRunning, taskTotalSeconds,
-      pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes,
+      pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes, isPaused,
       startTimer, stopTimer, setPomMode, setWorkMinutes, setBreakMinutes, getBreakSeconds,
+      pauseTimer, resumeTimer,
     }}>
       {children}
     </TimerContext.Provider>

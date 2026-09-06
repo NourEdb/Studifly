@@ -24,7 +24,7 @@ export default function PlannerDayColumn({
   const dayEvents  = events.filter(e => e.event_date === dayStr)
     .sort((a, b) => (a.event_time || '').localeCompare(b.event_time || ''));
   const dayBlocks  = (blocks || [])
-    .filter(b => b.plan_date === dayStr)
+    .filter(b => b.plan_date === dayStr && b.start_time && b.end_time)
     .sort((a, b) => a.start_time.localeCompare(b.start_time));
 
   const actualSeconds = daySessions.reduce((sum, s) => sum + (s.duration || 0), 0);

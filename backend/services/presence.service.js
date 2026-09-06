@@ -25,6 +25,18 @@ async function emitToBuddies(userId, event, payload) {
   }
 }
 
+/**
+ * Like emitToBuddies, but suppressed while the user has "Appear offline" enabled.
+ * Use this for routine study-session start/stop broadcasts. For an explicit
+ * one-off correction (e.g. right when the Settings toggle itself is flipped),
+ * call emitToBuddies directly so the message isn't swallowed by this same check.
+ */
+async function emitPresenceEvent(userId, username, event) {
+  const user = await db.get('SELECT appear_offline FROM users WHERE id = ?', [userId]);
+  if (user?.appear_offline) return;
+  return emitToBuddies(userId, event, { userId, username });
+}
+
 /** Emit an event to a single user's room. */
 function emitToUser(userId, event, payload) {
   const io = getIO();
@@ -32,4 +44,4 @@ function emitToUser(userId, event, payload) {
   io.to(`user:${userId}`).emit(event, payload);
 }
 
-module.exports = { emitToBuddies, emitToUser };
+module.exports = { emitToBuddies, emitPresenceEvent, emitToUser };

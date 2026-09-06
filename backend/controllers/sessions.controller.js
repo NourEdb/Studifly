@@ -2,7 +2,7 @@ const svc      = require('../services/sessions.service');
 const presence = require('../services/presence.service');
 
 function notifyBuddies(userId, username, event) {
-  presence.emitToBuddies(userId, event, { userId, username })
+  presence.emitPresenceEvent(userId, username, event)
     .catch(err => console.error(`[presence] ${event} emit failed:`, err.message));
 }
 

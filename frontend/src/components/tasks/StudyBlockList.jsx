@@ -24,8 +24,16 @@ export default function StudyBlockList({ blocks, onEdit, onDelete }) {
       {blocks.map(b => (
         <div key={b.id} className={styles.block}>
           <div className={styles.left}>
-            <span className={styles.date}>{fmtDate(b.plan_date)}</span>
-            <span className={styles.time}>{fmt(b.start_time)} – {fmt(b.end_time)}</span>
+            {b.plan_date ? (
+              <>
+                <span className={styles.date}>{fmtDate(b.plan_date)}</span>
+                {b.start_time && b.end_time
+                  ? <span className={styles.time}>{fmt(b.start_time)} – {fmt(b.end_time)}</span>
+                  : <span className={styles.time}>No time set</span>}
+              </>
+            ) : (
+              <span className={styles.time}>Not scheduled</span>
+            )}
             {b.topic && <span className={styles.topic}>{b.topic}</span>}
           </div>
           <div className={styles.right}>

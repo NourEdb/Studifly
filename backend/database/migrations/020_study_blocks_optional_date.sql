@@ -1,0 +1,1 @@
+ALTER TABLE study_blocks ALTER COLUMN plan_date DROP NOT NULL;

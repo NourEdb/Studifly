@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../database/db');
 const { sendPasswordResetEmail } = require('./email.service');
+const presence = require('./presence.service');
+const sessions = require('./sessions.service');
 
 function sha256(str) {
   return crypto.createHash('sha256').update(str).digest('hex');
@@ -39,7 +41,7 @@ async function login({ username, password }) {
 
 async function getMe(userId) {
   return db.get(
-    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, pinned_badge, created_at FROM users WHERE id = ?',
+    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, appear_offline, pinned_badge, created_at FROM users WHERE id = ?',
     [userId]
   );
 }
@@ -53,6 +55,7 @@ async function updateMe(userId, body) {
   if ('display_name' in body)                     { fields.push('display_name = ?');            params.push(body.display_name || null); }
   if ('weekly_goal_hours' in body)                { fields.push('weekly_goal_hours = ?');       params.push(parseInt(body.weekly_goal_hours, 10) || 10); }
   if ('email_reminders_enabled' in body)          { fields.push('email_reminders_enabled = ?'); params.push(!!body.email_reminders_enabled); }
+  if ('appear_offline' in body)                   { fields.push('appear_offline = ?');          params.push(!!body.appear_offline); }
 
   if ('pinned_badge' in body) {
     if (body.pinned_badge) {
@@ -77,6 +80,20 @@ async function updateMe(userId, body) {
     params.push(userId);
     await db.run(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`, params);
   }
+
+  // If "Appear offline" just changed while a session is actively running, tell
+  // friends right away instead of waiting for the session to start/stop —
+  // that's the only way the change reaches them without a page reload.
+  if ('appear_offline' in body) {
+    const active = await sessions.hasActiveSession(userId);
+    if (active) {
+      const me = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
+      const event = body.appear_offline ? 'buddy_stopped_studying' : 'buddy_started_studying';
+      presence.emitToBuddies(userId, event, { userId, username: me.username })
+        .catch(err => console.error('[presence] appear_offline sync failed:', err.message));
+    }
+  }
+
   return getMe(userId);
 }
 

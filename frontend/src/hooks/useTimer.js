@@ -62,6 +62,9 @@ export default function useTimer() {
     setPomMode:       ctx.setPomMode,
     setWorkMinutes:   ctx.setWorkMinutes,
     setBreakMinutes:  ctx.setBreakMinutes,
+    isPaused:         ctx.isPaused,
+    pauseTimer:       ctx.pauseTimer,
+    resumeTimer:      ctx.resumeTimer,
     handleStart,
     handleStop,
   };

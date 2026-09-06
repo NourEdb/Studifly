@@ -1,0 +1,2 @@
+ALTER TABLE study_blocks ALTER COLUMN start_time DROP NOT NULL;
+ALTER TABLE study_blocks ALTER COLUMN end_time DROP NOT NULL;

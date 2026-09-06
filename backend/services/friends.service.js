@@ -14,10 +14,17 @@ async function getFriends(userId) {
        u.id,
        u.username,
        u.display_name,
-       EXISTS (
-         SELECT 1 FROM study_sessions
-         WHERE user_id = u.id AND end_time IS NULL
-       )               AS is_studying,
+       -- Only the friend's MOST RECENT session counts, and only if it's still
+       -- open and started within the last 12 hours — a session abandoned by a
+       -- closed tab or a logout that never called stop() shouldn't mark them
+       -- as studying forever. Mirrors sessions.service.js's hasActiveSession().
+       CASE WHEN u.appear_offline THEN false ELSE COALESCE((
+         SELECT end_time IS NULL AND start_time >= NOW() - INTERVAL '12 hours'
+         FROM study_sessions
+         WHERE user_id = u.id
+         ORDER BY start_time DESC
+         LIMIT 1
+       ), false) END   AS is_studying,
        f.created_at
      FROM friendships f
      JOIN users u ON u.id = CASE

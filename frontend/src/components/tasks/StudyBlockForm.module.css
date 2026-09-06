@@ -87,6 +87,12 @@
   color: var(--color-error);
 }
 
+.hint {
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  margin: -6px 0 0;
+}
+
 .actions {
   display: flex;
   gap: 10px;

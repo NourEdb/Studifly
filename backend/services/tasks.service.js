@@ -45,7 +45,7 @@ async function getAll(userId, filters = {}) {
     sql += ' AND t.due_date >= ? AND t.due_date < ?';
     params.push(start.slice(0, 10), end.slice(0, 10));
   }
-  sql += ' ORDER BY t.due_date ASC NULLS LAST, t.created_at DESC';
+  sql += ' ORDER BY (t.status = \'completed\'), t.due_date ASC NULLS LAST, t.created_at DESC';
 
   const rows = await db.all(sql, params);
   const now = new Date().toISOString().slice(0, 10);

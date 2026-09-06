@@ -33,7 +33,8 @@ function StarRating({ value, onChange, label }) {
 export default function PostSessionModal({ session, onDone }) {
   const [completion, setCompletion] = useState(null);
   const [markDone, setMarkDone]     = useState(false);
-  const [extraTime, setExtraTime]   = useState('');
+  const [extraHours, setExtraHours]     = useState('');
+  const [extraMinutes, setExtraMinutes] = useState('');
   const [notes, setNotes]           = useState('');
   const [focus, setFocus]           = useState(null);
   const [difficulty, setDifficulty] = useState(null);
@@ -42,12 +43,13 @@ export default function PostSessionModal({ session, onDone }) {
   async function handleSubmit(continueSession = false) {
     setSaving(true);
     try {
+      const extraTotal = (parseInt(extraHours, 10) || 0) * 60 + (parseInt(extraMinutes, 10) || 0);
       await reflectSession(session.id, {
         completion_answer:        completion,
         notes:                    notes || null,
         focus_score:              focus,
         difficulty_rating:        difficulty,
-        estimated_extra_minutes:  extraTime ? parseInt(extraTime) : null,
+        estimated_extra_minutes:  extraTotal > 0 ? extraTotal : null,
         task_marked_done:         markDone ? 1 : 0,
         resume_later:             continueSession,
       });
@@ -111,16 +113,30 @@ export default function PostSessionModal({ session, onDone }) {
 
         {(completion === 'partially' || completion === 'no') && (
           <div className={styles.section}>
-            <label className={styles.fieldLabel}>How much more time do you estimate you need? (minutes)</label>
-            <input
-              type="number"
-              min="1"
-              max="480"
-              className={styles.input}
-              placeholder="e.g. 30"
-              value={extraTime}
-              onChange={e => setExtraTime(e.target.value)}
-            />
+            <label className={styles.fieldLabel}>How much more time do you estimate you need?</label>
+            <div className={styles.timeGroup}>
+              <input
+                type="number"
+                min="0"
+                className={styles.timeHours}
+                placeholder="Hrs"
+                value={extraHours}
+                onChange={e => setExtraHours(e.target.value)}
+                aria-label="Hours"
+              />
+              <span className={styles.timeUnit}>h</span>
+              <input
+                type="number"
+                min="0"
+                max="59"
+                className={styles.timeMinutes}
+                placeholder="Min"
+                value={extraMinutes}
+                onChange={e => setExtraMinutes(e.target.value)}
+                aria-label="Minutes"
+              />
+              <span className={styles.timeUnit}>m</span>
+            </div>
           </div>
         )}
 

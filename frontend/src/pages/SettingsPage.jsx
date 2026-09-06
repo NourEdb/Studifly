@@ -19,10 +19,12 @@ export default function SettingsPage() {
   const [displayName, setDisplayName]         = useState(user?.display_name || '');
   const [weeklyGoalHours, setWeeklyGoalHours] = useState(user?.weekly_goal_hours ?? 10);
   const [remindersEnabled, setRemindersEnabled] = useState(user?.email_reminders_enabled ?? true);
+  const [appearOffline, setAppearOffline]       = useState(user?.appear_offline ?? false);
 
   const [profileMsg, setProfileMsg] = useState(null);
   const [goalMsg, setGoalMsg]       = useState(null);
   const [notifMsg, setNotifMsg]     = useState(null);
+  const [privacyMsg, setPrivacyMsg] = useState(null);
 
   const [currentPw, setCurrentPw]   = useState('');
   const [newPw, setNewPw]           = useState('');
@@ -78,6 +80,18 @@ export default function SettingsPage() {
     } catch (err) {
       setRemindersEnabled(!newVal);
       setNotifMsg({ ok: false, text: 'Failed to update notification settings.' });
+    }
+  }
+
+  async function toggleAppearOffline(newVal) {
+    setAppearOffline(newVal);
+    try {
+      await updateMe({ appear_offline: newVal });
+      await refreshUser();
+      setPrivacyMsg({ ok: true, text: newVal ? 'You now appear offline to friends.' : 'Friends can see when you\'re studying again.' });
+    } catch (err) {
+      setAppearOffline(!newVal);
+      setPrivacyMsg({ ok: false, text: 'Failed to update privacy setting.' });
     }
   }
 
@@ -196,6 +210,26 @@ export default function SettingsPage() {
           </label>
         </div>
         {notifMsg && <p className={notifMsg.ok ? styles.ok : styles.err}>{notifMsg.text}</p>}
+      </Card>
+
+      {/* Study Buddy Privacy */}
+      <Card className={styles.section}>
+        <h2 className={styles.sectionTitle}>Study Buddy Privacy</h2>
+        <div className={styles.toggleRow}>
+          <div>
+            <p className={styles.toggleLabel}>Appear offline</p>
+            <p className={styles.toggleDesc}>Hide your studying status from friends. You can still see theirs.</p>
+          </div>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={appearOffline}
+              onChange={e => toggleAppearOffline(e.target.checked)}
+            />
+            <span className={styles.slider} />
+          </label>
+        </div>
+        {privacyMsg && <p className={privacyMsg.ok ? styles.ok : styles.err}>{privacyMsg.text}</p>}
       </Card>
 
       {/* Weekly Review */}

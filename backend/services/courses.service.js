@@ -43,7 +43,7 @@ async function getCourseDetail(userId, courseId) {
     db.get('SELECT * FROM courses WHERE id = ? AND user_id = ?', [courseId, userId]),
     db.all(
       `SELECT * FROM tasks WHERE course_id = ? AND user_id = ?
-       ORDER BY due_date ASC NULLS LAST, created_at DESC`,
+       ORDER BY (status = 'completed'), due_date ASC NULLS LAST, created_at DESC`,
       [courseId, userId]
     ),
     db.get(
