@@ -3,10 +3,13 @@ import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import TimerWidget from '../components/timer/TimerWidget';
 import ManualEntryForm from '../components/timer/ManualEntryForm';
+import CourseLabel from '../components/ui/CourseLabel';
 import useTasks from '../hooks/useTasks';
 import useSessions from '../hooks/useSessions';
+import useStudyBlocks from '../hooks/useStudyBlocks';
 import useTimer from '../hooks/useTimer';
 import { deleteSession, reflectSession } from '../api/sessions.api';
+import { describeSession } from '../utils/subtaskSelection';
 import styles from './TrackerPage.module.css';
 
 function fmtDuration(seconds) {
@@ -47,13 +50,14 @@ function Stars({ value, title }) {
 export default function TrackerPage() {
   const { tasks, refresh: refreshTasks } = useTasks();
   const { sessions, loading, remove, refresh: refreshSessions } = useSessions({ limit: 50 });
+  const { blocks, refresh: refreshBlocks } = useStudyBlocks();
   const { isRunning, handleStart } = useTimer();
   const [cleaningUp, setCleaningUp] = useState(false);
 
   const incompleteSessions = sessions.filter(s => !s.end_time || !s.duration || s.duration === 0);
 
   async function handleSessionSaved() {
-    await Promise.all([refreshSessions(), refreshTasks()]);
+    await Promise.all([refreshSessions(), refreshTasks(), refreshBlocks()]);
   }
 
   async function handleDelete(id) {
@@ -83,8 +87,8 @@ export default function TrackerPage() {
     }
     try {
       await reflectSession(session.id, { resume_later: false });
-      const task = tasks.find(t => t.id === session.task_id);
-      await handleStart(session.task_id, task?.name || 'Untitled session');
+      const { name, plannedMinutes } = describeSession(session.task_id, session.study_block_id, tasks, blocks);
+      await handleStart(session.task_id, name, plannedMinutes, session.study_block_id || null);
       refreshSessions();
     } catch {
       toast.error('Failed to resume session');
@@ -95,10 +99,10 @@ export default function TrackerPage() {
     <div className={styles.page}>
       <div className={styles.left}>
         <Card>
-          <TimerWidget tasks={tasks} onSessionSaved={handleSessionSaved} />
+          <TimerWidget tasks={tasks} blocks={blocks} onSessionSaved={handleSessionSaved} />
         </Card>
         <Card>
-          <ManualEntryForm tasks={tasks} onSaved={handleSessionSaved} />
+          <ManualEntryForm tasks={tasks} blocks={blocks} onSaved={handleSessionSaved} />
         </Card>
       </div>
 
@@ -143,7 +147,12 @@ export default function TrackerPage() {
                     </div>
 
                     <div className={styles.sessionInfo}>
-                      <span className={styles.sessionTask}>{s.task_name || 'No task'}</span>
+                      <span className={styles.sessionTask}>
+                        {s.task_name
+                          ? (s.study_block_topic ? `${s.task_name} › ${s.study_block_topic}` : s.task_name)
+                          : 'No task'}
+                      </span>
+                      {s.course_name && <CourseLabel name={s.course_name} color={s.course_color} />}
                       {s.focus_score && (
                         <Stars value={s.focus_score} title={`Focus: ${s.focus_score}/5`} />
                       )}

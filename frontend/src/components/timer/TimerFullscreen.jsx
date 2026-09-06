@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import useTimer from '../../hooks/useTimer';
 import TimerDisplay from './TimerDisplay';
+import CourseLabel from '../ui/CourseLabel';
 import styles from './TimerFullscreen.module.css';
 
-export default function TimerFullscreen({ taskName, courseName, onStop, onClose }) {
+export default function TimerFullscreen({ taskName, courseName, courseColor, onStop, onClose }) {
   const rootRef = useRef(null);
   // TimerWidget re-renders every tick and passes a fresh onClose closure each
   // time. Reading it through a ref (kept current on every render, below) lets
@@ -61,9 +62,12 @@ export default function TimerFullscreen({ taskName, courseName, onStop, onClose 
       {isPaused && <p className={styles.pausedLabel}>Paused</p>}
 
       {taskName && (
-        <p className={styles.taskName}>
-          📌 {taskName}{courseName ? ` · ${courseName}` : ''}
-        </p>
+        <p className={styles.taskName}>📌 {taskName}</p>
+      )}
+      {courseName && (
+        <div className={styles.courseRow}>
+          <CourseLabel name={courseName} color={courseColor} />
+        </div>
       )}
 
       <div className={styles.controls}>

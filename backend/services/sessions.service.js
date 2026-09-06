@@ -2,10 +2,10 @@ const db = require('../database/db');
 const { getISOWeekBounds } = require('../utils/dateHelpers');
 const gamification = require('./gamification.service');
 
-async function start(userId, { task_id }) {
+async function start(userId, { task_id, study_block_id }) {
   return db.get(
-    'INSERT INTO study_sessions (user_id, task_id, start_time) VALUES (?, ?, NOW()) RETURNING *',
-    [userId, task_id || null]
+    'INSERT INTO study_sessions (user_id, task_id, study_block_id, start_time) VALUES (?, ?, ?, NOW()) RETURNING *',
+    [userId, task_id || null, study_block_id || null]
   );
 }
 
@@ -25,6 +25,27 @@ async function stop(userId, id, breakSeconds = 0) {
   );
   gamification.onSessionComplete(userId, updated).catch(err => console.error('[gamification] onSessionComplete failed:', err.message));
   return updated;
+}
+
+async function completeTaskDirect(userId, taskId) {
+  await db.run(`UPDATE tasks SET status = 'completed', completed_at = NOW() WHERE id = ? AND user_id = ?`, [taskId, userId]);
+  gamification.onTaskComplete(userId, taskId).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
+}
+
+// Completes a subtask, then completes its parent task too if that was the
+// last remaining incomplete subtask. Returns true if the parent got completed.
+async function completeSubtaskAndMaybeParent(userId, studyBlockId, taskId) {
+  await db.run(`UPDATE study_blocks SET status = 'completed', completed_at = NOW() WHERE id = ? AND user_id = ?`, [studyBlockId, userId]);
+  if (!taskId) return false;
+  const remaining = await db.get(
+    `SELECT COUNT(*)::int AS cnt FROM study_blocks WHERE task_id = ? AND user_id = ? AND status <> 'completed'`,
+    [taskId, userId]
+  );
+  if (remaining.cnt === 0) {
+    await completeTaskDirect(userId, taskId);
+    return true;
+  }
+  return false;
 }
 
 async function reflect(userId, id, data) {
@@ -56,7 +77,7 @@ async function reflect(userId, id, data) {
   if ('task_marked_done' in data)         { sets.push('task_marked_done = ?');         vals.push(data.task_marked_done ? 1 : 0); }
   if ('resume_later' in data)             { sets.push('resume_later = ?');             vals.push(data.resume_later ? true : false); }
 
-  if (sets.length === 0) return session;
+  if (sets.length === 0) return { ...session, parent_task_completed: false };
 
   vals.push(id);
   const updated = await db.get(
@@ -64,27 +85,38 @@ async function reflect(userId, id, data) {
     vals
   );
 
-  // Mark the linked task completed and fire gamification if requested
-  if (data.task_marked_done && session.task_id) {
-    await db.run(
-      `UPDATE tasks SET status = 'completed' WHERE id = ? AND user_id = ?`,
-      [session.task_id, userId]
-    );
-    gamification.onTaskComplete(userId, session.task_id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
+  // "Did you complete it?" refers to the subtask when the session was started
+  // on one — completing the subtask can in turn auto-complete the parent task.
+  let parentTaskCompleted = false;
+  if (data.task_marked_done) {
+    if (session.study_block_id) {
+      parentTaskCompleted = await completeSubtaskAndMaybeParent(userId, session.study_block_id, session.task_id);
+    } else if (session.task_id) {
+      await completeTaskDirect(userId, session.task_id);
+    }
   }
 
-  // Partial answer nudges task to in_progress (never downgrades a completed task)
-  if (data.completion_answer === 'partially' && session.task_id && !data.task_marked_done) {
-    await db.run(
-      `UPDATE tasks SET status = 'in_progress' WHERE id = ? AND user_id = ? AND status <> 'completed'`,
-      [session.task_id, userId]
-    );
+  // Partial answer nudges the subtask (and/or task) to in_progress — never
+  // downgrades something already completed.
+  if (data.completion_answer === 'partially' && !data.task_marked_done) {
+    if (session.study_block_id) {
+      await db.run(
+        `UPDATE study_blocks SET status = 'in_progress' WHERE id = ? AND user_id = ? AND status <> 'completed'`,
+        [session.study_block_id, userId]
+      );
+    }
+    if (session.task_id) {
+      await db.run(
+        `UPDATE tasks SET status = 'in_progress' WHERE id = ? AND user_id = ? AND status <> 'completed'`,
+        [session.task_id, userId]
+      );
+    }
   }
 
-  return updated;
+  return { ...updated, parent_task_completed: parentTaskCompleted };
 }
 
-async function manual(userId, { task_id, start_time, end_time, duration, notes, focus_score, difficulty_rating, completion_answer }) {
+async function manual(userId, { task_id, study_block_id, start_time, end_time, duration, notes, focus_score, difficulty_rating, completion_answer }) {
   const dur = duration || Math.round((new Date(end_time) - new Date(start_time)) / 1000);
   const answer = completion_answer || null;
   const statusMap = { yes: 'completed', partially: 'partial', no: 'needs_more_time' };
@@ -92,22 +124,25 @@ async function manual(userId, { task_id, start_time, end_time, duration, notes, 
 
   const session = await db.get(
     `INSERT INTO study_sessions
-       (user_id, task_id, start_time, end_time, duration, is_manual, notes, focus_score, difficulty_rating, status, completion_answer)
-     VALUES (?,?,?,?,?,1,?,?,?,?,?) RETURNING *`,
-    [userId, task_id || null, start_time, end_time || null, dur, notes || null, focus_score || null, difficulty_rating || null, status, answer]
+       (user_id, task_id, study_block_id, start_time, end_time, duration, is_manual, notes, focus_score, difficulty_rating, status, completion_answer)
+     VALUES (?,?,?,?,?,?,1,?,?,?,?,?) RETURNING *`,
+    [userId, task_id || null, study_block_id || null, start_time, end_time || null, dur, notes || null, focus_score || null, difficulty_rating || null, status, answer]
   );
   gamification.onSessionComplete(userId, session).catch(err => console.error('[gamification] onSessionComplete failed:', err.message));
 
-  // "Yes!" answer auto-completes the linked task, same as the post-session reflection checkbox
-  if (answer === 'yes' && task_id) {
-    await db.run(
-      `UPDATE tasks SET status = 'completed' WHERE id = ? AND user_id = ?`,
-      [task_id, userId]
-    );
-    gamification.onTaskComplete(userId, task_id).catch(err => console.error('[gamification] onTaskComplete failed:', err.message));
+  // "Yes!" answer auto-completes the linked subtask (and cascades to the
+  // parent task) or, with no subtask selected, the task directly — same as
+  // the post-session reflection checkbox.
+  let parentTaskCompleted = false;
+  if (answer === 'yes') {
+    if (study_block_id) {
+      parentTaskCompleted = await completeSubtaskAndMaybeParent(userId, study_block_id, task_id);
+    } else if (task_id) {
+      await completeTaskDirect(userId, task_id);
+    }
   }
 
-  return session;
+  return { ...session, parent_task_completed: parentTaskCompleted };
 }
 
 async function getTaskTotal(userId, taskId) {
@@ -121,8 +156,12 @@ async function getTaskTotal(userId, taskId) {
 }
 
 async function getAll(userId, filters = {}) {
-  let sql = `SELECT s.*, t.name as task_name
-             FROM study_sessions s LEFT JOIN tasks t ON s.task_id = t.id
+  let sql = `SELECT s.*, t.name as task_name, t.course_id, c.name as course_name, c.color as course_color,
+                    sb.topic as study_block_topic
+             FROM study_sessions s
+             LEFT JOIN tasks t ON s.task_id = t.id
+             LEFT JOIN courses c ON t.course_id = c.id
+             LEFT JOIN study_blocks sb ON s.study_block_id = sb.id
              WHERE s.user_id = ?`;
   const params = [userId];
 

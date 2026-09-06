@@ -7,6 +7,7 @@ import StudyBlockList from './StudyBlockList';
 import Button from '../ui/Button';
 import useTimer from '../../hooks/useTimer';
 import useStudyBlocks from '../../hooks/useStudyBlocks';
+import { describeSession } from '../../utils/subtaskSelection';
 import styles from './TaskList.module.css';
 
 export default function TaskList({ tasks, courses, add, edit, remove, setStatus, updateLocal, filters, setFilters }) {
@@ -15,7 +16,10 @@ export default function TaskList({ tasks, courses, add, edit, remove, setStatus,
   const [planningTask, setPlanningTask] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
   const { handleStart, isRunning, activeSession } = useTimer();
-  const { add: addBlock, edit: editBlock, remove: removeBlock, forTask } = useStudyBlocks();
+  const {
+    add: addBlock, edit: editBlock, remove: removeBlock,
+    setStatus: setBlockStatus, updateLocal: updateBlockLocal, forTask,
+  } = useStudyBlocks();
 
   async function handleSave(data) {
     try {
@@ -55,6 +59,31 @@ export default function TaskList({ tasks, courses, add, edit, remove, setStatus,
       toast.success(next === 'completed' ? 'Task marked complete' : 'Task marked incomplete');
     } catch {
       toast.error('Failed to update task');
+    }
+  }
+
+  async function handleStartSubtask(block) {
+    if (isRunning) {
+      toast.error(`Timer already running for "${activeSession?.taskName}"`);
+      return;
+    }
+    const { name, plannedMinutes } = describeSession(block.task_id, block.id, tasks, [block]);
+    await handleStart(block.task_id, name, plannedMinutes, block.id);
+    updateBlockLocal?.(block.id, { status: 'in_progress' });
+    updateLocal?.(block.task_id, { status: 'in_progress' });
+  }
+
+  async function handleToggleSubtaskComplete(block) {
+    const next = block.status === 'completed' ? 'pending' : 'completed';
+    try {
+      const result = await setBlockStatus(block.id, next);
+      toast.success(next === 'completed' ? 'Subtask marked complete' : 'Subtask marked incomplete');
+      if (result?.parent_task_completed) {
+        updateLocal?.(block.task_id, { status: 'completed' });
+        toast.success('🎉 All subtasks done — the parent task was marked complete too!', { duration: 5000 });
+      }
+    } catch {
+      toast.error('Failed to update subtask');
     }
   }
 
@@ -128,6 +157,8 @@ export default function TaskList({ tasks, courses, add, edit, remove, setStatus,
                 blocks={forTask(t.id)}
                 onEdit={openEditBlock}
                 onDelete={handleDeleteBlock}
+                onStartTimer={handleStartSubtask}
+                onToggleComplete={handleToggleSubtaskComplete}
               />
             </div>
           ))}

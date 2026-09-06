@@ -31,6 +31,7 @@ function StarRating({ value, onChange, label }) {
 }
 
 export default function PostSessionModal({ session, onDone }) {
+  const isSubtask = !!session?.study_block_id;
   const [completion, setCompletion] = useState(null);
   const [markDone, setMarkDone]     = useState(false);
   const [extraHours, setExtraHours]     = useState('');
@@ -44,7 +45,7 @@ export default function PostSessionModal({ session, onDone }) {
     setSaving(true);
     try {
       const extraTotal = (parseInt(extraHours, 10) || 0) * 60 + (parseInt(extraMinutes, 10) || 0);
-      await reflectSession(session.id, {
+      const result = await reflectSession(session.id, {
         completion_answer:        completion,
         notes:                    notes || null,
         focus_score:              focus,
@@ -62,6 +63,9 @@ export default function PostSessionModal({ session, onDone }) {
           colors: ['#6C4DC4', '#a78bfa', '#F5C842'],
         });
         toast.custom(t => <XpToast visible={t.visible} />, { duration: 3000 });
+        if (result?.parent_task_completed) {
+          toast.success('🎉 All subtasks done — the parent task was marked complete too!', { duration: 5000 });
+        }
       } else {
         toast.success('Reflection saved');
       }
@@ -83,7 +87,7 @@ export default function PostSessionModal({ session, onDone }) {
       <div className={styles.body}>
 
         <div className={styles.section}>
-          <p className={styles.question}>Did you complete the task?</p>
+          <p className={styles.question}>Did you complete the {isSubtask ? 'subtask' : 'task'}?</p>
           <div className={styles.chips}>
             {[
               { value: 'yes',       label: 'Yes!' },
@@ -106,7 +110,7 @@ export default function PostSessionModal({ session, onDone }) {
           <div className={styles.section}>
             <label className={styles.checkRow}>
               <input type="checkbox" checked={markDone} onChange={e => setMarkDone(e.target.checked)} />
-              <span>Mark task as completed in my task list</span>
+              <span>Mark {isSubtask ? 'subtask' : 'task'} as completed{isSubtask ? '' : ' in my task list'}</span>
             </label>
           </div>
         )}

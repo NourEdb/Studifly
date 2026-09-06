@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { manualSession } from '../../api/sessions.api';
+import { parseSelection } from '../../utils/subtaskSelection';
 import DateTimePicker from '../ui/DateTimePicker';
 import Button from '../ui/Button';
+import TaskSubtaskSelect from './TaskSubtaskSelect';
 import styles from './ManualEntryForm.module.css';
 
 function StarRating({ value, onChange, label }) {
@@ -33,15 +35,18 @@ const COMPLETION_OPTIONS = [
   { value: 'no',        label: 'Not really' },
 ];
 
-export default function ManualEntryForm({ tasks, onSaved }) {
+export default function ManualEntryForm({ tasks, blocks, onSaved }) {
   const [form, setForm] = useState({
-    task_id: '', start_time: null, end_time: null, notes: '', completion_answer: '',
+    selection: '', start_time: null, end_time: null, notes: '', completion_answer: '',
   });
   const [focus, setFocus]           = useState(null);
   const [difficulty, setDifficulty] = useState(null);
   const [loading, setLoading]       = useState(false);
 
   function set(k, v) { setForm(f => ({ ...f, [k]: v })); }
+
+  const { taskId, studyBlockId } = parseSelection(form.selection, tasks, blocks || []);
+  const isSubtask = !!studyBlockId;
 
   const duration = (() => {
     if (!form.start_time || !form.end_time) return null;
@@ -59,17 +64,17 @@ export default function ManualEntryForm({ tasks, onSaved }) {
     setLoading(true);
     try {
       await manualSession({
-        ...form,
-        task_id:           form.task_id || null,
-        start_time:        form.start_time.toISOString(),
-        end_time:          form.end_time.toISOString(),
-        notes:             form.notes || null,
-        completion_answer: form.task_id ? (form.completion_answer || null) : null,
-        focus_score:       focus,
-        difficulty_rating: difficulty,
+        task_id:            taskId,
+        study_block_id:     studyBlockId,
+        start_time:         form.start_time.toISOString(),
+        end_time:           form.end_time.toISOString(),
+        notes:              form.notes || null,
+        completion_answer:  (taskId || studyBlockId) ? (form.completion_answer || null) : null,
+        focus_score:        focus,
+        difficulty_rating:  difficulty,
       });
       toast.success('Session logged');
-      setForm({ task_id: '', start_time: null, end_time: null, notes: '', completion_answer: '' });
+      setForm({ selection: '', start_time: null, end_time: null, notes: '', completion_answer: '' });
       setFocus(null);
       setDifficulty(null);
       onSaved?.();
@@ -86,21 +91,18 @@ export default function ManualEntryForm({ tasks, onSaved }) {
 
       <div className={styles.field}>
         <label>Task (optional)</label>
-        <select
-          value={form.task_id}
-          onChange={e => {
-            const task_id = e.target.value;
-            setForm(f => ({ ...f, task_id, completion_answer: task_id ? f.completion_answer : '' }));
-          }}
-        >
-          <option value="">— No task —</option>
-          {tasks.filter(t => t.status !== 'completed').map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
+        <TaskSubtaskSelect
+          tasks={tasks}
+          blocks={blocks}
+          value={form.selection}
+          onChange={selection => setForm(f => ({ ...f, selection, completion_answer: selection ? f.completion_answer : '' }))}
+          placeholder="— No task —"
+        />
       </div>
 
-      {form.task_id && (
+      {form.selection && (
         <div className={styles.field}>
-          <label>Did you complete the task?</label>
+          <label>Did you complete the {isSubtask ? 'subtask' : 'task'}?</label>
           <select value={form.completion_answer} onChange={e => set('completion_answer', e.target.value)}>
             {COMPLETION_OPTIONS.map(opt => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>

@@ -14,6 +14,7 @@ router.post('/',
   body('plan_date').optional({ nullable: true }).matches(/^\d{4}-\d{2}-\d{2}$/),
   body('start_time').optional({ nullable: true }).matches(/^\d{2}:\d{2}$/),
   body('end_time').optional({ nullable: true }).matches(/^\d{2}:\d{2}$/),
+  body('planned_time').optional({ nullable: true }).isInt({ min: 0 }),
   // A block can be entirely unscheduled (a plain subtask), but it can't have
   // only one of start/end, and a time without a date makes no sense.
   body().custom(b => {
@@ -33,8 +34,15 @@ router.put('/:id',
   body('plan_date').optional({ nullable: true }).matches(/^\d{4}-\d{2}-\d{2}$/),
   body('start_time').optional({ nullable: true }).matches(/^\d{2}:\d{2}$/),
   body('end_time').optional({ nullable: true }).matches(/^\d{2}:\d{2}$/),
+  body('planned_time').optional({ nullable: true }).isInt({ min: 0 }),
   validate,
   ctrl.update
+);
+
+router.patch('/:id/status',
+  body('status').isIn(['pending', 'in_progress', 'completed']),
+  validate,
+  ctrl.updateStatus
 );
 
 router.delete('/:id', ctrl.remove);

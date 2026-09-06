@@ -2,12 +2,14 @@ import { useState } from 'react';
 import styles from './StudyBlockForm.module.css';
 
 function initForm(block, defaultDate) {
-  if (!block) return { plan_date: defaultDate || '', start_time: '', end_time: '', topic: '' };
+  const mins = block?.planned_time || null;
   return {
-    plan_date:  block.plan_date  || defaultDate || '',
-    start_time: block.start_time || '',
-    end_time:   block.end_time   || '',
-    topic:      block.topic      || '',
+    plan_date:       block?.plan_date  || defaultDate || '',
+    start_time:      block?.start_time || '',
+    end_time:        block?.end_time   || '',
+    topic:           block?.topic      || '',
+    planned_hours:   mins ? String(Math.floor(mins / 60)) : '',
+    planned_minutes: mins ? String(mins % 60) : '',
   };
 }
 
@@ -46,15 +48,18 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
       return;
     }
 
+    const plannedTotal = (parseInt(form.planned_hours, 10) || 0) * 60 + (parseInt(form.planned_minutes, 10) || 0);
+
     setSaving(true);
     setError('');
     try {
       await onSave({
-        task_id:    Number(selectedTaskId) || task.id,
-        plan_date:  form.plan_date || null,
-        start_time: form.start_time || null,
-        end_time:   form.end_time || null,
-        topic:      form.topic.trim() || null,
+        task_id:      Number(selectedTaskId) || task.id,
+        plan_date:    form.plan_date || null,
+        start_time:   form.start_time || null,
+        end_time:     form.end_time || null,
+        topic:        form.topic.trim() || null,
+        planned_time: plannedTotal > 0 ? plannedTotal : null,
       });
       onClose();
     } catch {
@@ -131,6 +136,35 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
             Leave the date and time blank to add this as an unscheduled subtask — you
             can come back and schedule it later. It won't appear on the weekly planner
             until it has both a date and a time.
+          </p>
+
+          <label className={styles.label}>
+            Planned time (optional)
+            <div className={styles.row}>
+              <input
+                className={styles.input}
+                type="number"
+                min="0"
+                placeholder="Hrs"
+                value={form.planned_hours}
+                onChange={set('planned_hours')}
+                aria-label="Planned hours"
+              />
+              <input
+                className={styles.input}
+                type="number"
+                min="0"
+                max="59"
+                placeholder="Min"
+                value={form.planned_minutes}
+                onChange={set('planned_minutes')}
+                aria-label="Planned minutes"
+              />
+            </div>
+          </label>
+          <p className={styles.hint}>
+            If left blank, the planned-time chime while studying this subtask
+            falls back to the parent task's planned time.
           </p>
 
           <label className={styles.label}>

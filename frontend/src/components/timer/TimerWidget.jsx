@@ -4,7 +4,10 @@ import { playChime, unlockAudio, getChimeType, setChimeType, CHIME_OPTIONS } fro
 import TimerDisplay from './TimerDisplay';
 import PostSessionModal from './PostSessionModal';
 import TimerFullscreen from './TimerFullscreen';
+import TaskSubtaskSelect from './TaskSubtaskSelect';
 import Button from '../ui/Button';
+import CourseLabel from '../ui/CourseLabel';
+import { parseSelection } from '../../utils/subtaskSelection';
 import styles from './TimerWidget.module.css';
 
 function requestNotifPermission() {
@@ -19,8 +22,8 @@ function fmtDuration(seconds) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-export default function TimerWidget({ tasks, onSessionSaved }) {
-  const [selectedTask, setSelectedTask]     = useState('');
+export default function TimerWidget({ tasks, blocks, onSessionSaved }) {
+  const [selection, setSelection]           = useState('');
   const [stoppedSession, setStoppedSession] = useState(null);
   const [chimeType, setChimeTypeUI]         = useState(getChimeType());
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
@@ -37,9 +40,8 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
     // Both modes can now trigger a browser notification (planned-time reached,
     // or a Pomodoro phase change), so always ask up front.
     requestNotifPermission();
-    const task = tasks.find(t => t.id === parseInt(selectedTask));
-    const plannedMinutes = task?.planned_time > 0 ? task.planned_time : null;
-    await handleStart(selectedTask ? parseInt(selectedTask) : null, task?.name || 'Untitled session', plannedMinutes);
+    const { taskId, studyBlockId, name, plannedMinutes } = parseSelection(selection, tasks, blocks);
+    await handleStart(taskId, name, plannedMinutes, studyBlockId);
   }
 
   async function stop() {
@@ -54,7 +56,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
 
   function handleReflectionDone() {
     setStoppedSession(null);
-    setSelectedTask('');
+    setSelection('');
     onSessionSaved?.();
   }
 
@@ -132,6 +134,11 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
           {isRunning && activeSession?.taskName && (
             <p className={styles.taskLabel}>📌 {activeSession.taskName}</p>
           )}
+          {isRunning && runningTask?.course_name && (
+            <div className={styles.courseRow}>
+              <CourseLabel name={runningTask.course_name} color={runningTask.course_color} />
+            </div>
+          )}
           {isRunning && taskTotalSeconds && (
             <p className={styles.taskTotal}>
               Total time on this task: {fmtDuration(taskTotalSeconds)}
@@ -143,12 +150,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
           <div className={styles.controls}>
             <div className={styles.field}>
               <label>Select task (optional)</label>
-              <select value={selectedTask} onChange={e => setSelectedTask(e.target.value)}>
-                <option value="">— No specific task —</option>
-                {tasks.filter(t => t.status !== 'completed').map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+              <TaskSubtaskSelect tasks={tasks} blocks={blocks} value={selection} onChange={setSelection} />
             </div>
             <Button onClick={start} size="lg" fullWidth>▶ Start Timer</Button>
             <div className={styles.soundRow}>
@@ -179,6 +181,7 @@ export default function TimerWidget({ tasks, onSessionSaved }) {
         <TimerFullscreen
           taskName={activeSession?.taskName}
           courseName={runningTask?.course_name}
+          courseColor={runningTask?.course_color}
           onStop={stopFromFullscreen}
           onClose={() => setFullscreenOpen(false)}
         />

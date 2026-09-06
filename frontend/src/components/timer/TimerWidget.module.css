@@ -1,6 +1,7 @@
 .widget { display: flex; flex-direction: column; gap: 20px; align-items: center; }
 .displayWrapper { text-align: center; }
 .taskLabel { font-size: 0.875rem; color: var(--color-text-muted); margin-top: 6px; }
+.courseRow { display: flex; justify-content: center; margin-top: 4px; }
 .taskTotal { font-size: 0.75rem; color: var(--color-text-muted); margin-top: 4px; opacity: 0.75; }
 .pausedLabel { font-size: 0.75rem; font-weight: 700; color: var(--color-warning); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 6px; }
 .controls { display: flex; flex-direction: column; gap: 12px; width: 100%; }

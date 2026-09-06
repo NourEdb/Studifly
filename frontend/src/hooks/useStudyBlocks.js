@@ -4,6 +4,7 @@ import {
   getStudyBlocks,
   createStudyBlock,
   updateStudyBlock,
+  updateStudyBlockStatus,
   deleteStudyBlock,
   logActualProgress,
 } from '../api/study-blocks.api';
@@ -49,9 +50,21 @@ export default function useStudyBlocks() {
     return block;
   }
 
+  async function setStatus(id, status) {
+    const block = await updateStudyBlockStatus(id, status);
+    setBlocks(prev => prev.map(b => b.id === id ? block : b));
+    return block;
+  }
+
+  // Patches the in-memory list only (no API call) — for reflecting a status
+  // change made elsewhere (e.g. the timer already updated the backend).
+  function updateLocal(id, patch) {
+    setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } : b));
+  }
+
   function forTask(taskId) {
     return blocks.filter(b => b.task_id === taskId);
   }
 
-  return { blocks, loading, add, edit, remove, logActual, forTask, refresh: fetch };
+  return { blocks, loading, add, edit, remove, logActual, setStatus, updateLocal, forTask, refresh: fetch };
 }

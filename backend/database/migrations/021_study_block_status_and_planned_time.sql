@@ -1,0 +1,2 @@
+ALTER TABLE study_blocks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending';
+ALTER TABLE study_blocks ADD COLUMN IF NOT EXISTS planned_time INTEGER;

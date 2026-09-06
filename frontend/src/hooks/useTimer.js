@@ -2,17 +2,18 @@ import { useTimerContext } from '../context/TimerContext';
 import { startSession, stopSession } from '../api/sessions.api';
 import { getTaskTotal } from '../api/sessions.api';
 import { updateTaskStatus } from '../api/tasks.api';
+import { updateStudyBlockStatus } from '../api/study-blocks.api';
 import { unlockAudio } from '../utils/chime';
 import toast from 'react-hot-toast';
 
 export default function useTimer() {
   const ctx = useTimerContext();
 
-  async function handleStart(taskId, taskName, plannedMinutes = null) {
+  async function handleStart(taskId, taskName, plannedMinutes = null, studyBlockId = null) {
     if (ctx.isRunning) return;
     unlockAudio(); // must run inside this user-gesture handler so later chimes are allowed to play
     try {
-      const session = await startSession({ task_id: taskId });
+      const session = await startSession({ task_id: taskId, study_block_id: studyBlockId });
 
       let taskTotal = null;
       if (taskId) {
@@ -25,6 +26,11 @@ export default function useTimer() {
         }
         updateTaskStatus(taskId, 'in_progress').catch(err =>
           console.error('[useTimer] failed to mark task in_progress:', err.message)
+        );
+      }
+      if (studyBlockId) {
+        updateStudyBlockStatus(studyBlockId, 'in_progress').catch(err =>
+          console.error('[useTimer] failed to mark subtask in_progress:', err.message)
         );
       }
 

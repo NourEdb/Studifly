@@ -45,7 +45,9 @@ async function getAll(userId, filters = {}) {
     sql += ' AND t.due_date >= ? AND t.due_date < ?';
     params.push(start.slice(0, 10), end.slice(0, 10));
   }
-  sql += ' ORDER BY (t.status = \'completed\'), t.due_date ASC NULLS LAST, t.created_at DESC';
+  sql += ` ORDER BY (t.status = 'completed'),
+           CASE WHEN t.status = 'completed' THEN t.completed_at END DESC NULLS LAST,
+           t.due_date ASC NULLS LAST, t.created_at DESC`;
 
   const rows = await db.all(sql, params);
   const now = new Date().toISOString().slice(0, 10);
@@ -91,7 +93,11 @@ async function updateStatus(userId, id, status) {
   if (!VALID_STATUSES.includes(status)) { const e = new Error('Invalid status'); e.status = 400; throw e; }
   const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
   if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
-  await db.run('UPDATE tasks SET status = ? WHERE id = ?', [status, id]);
+  if (status === 'completed') {
+    await db.run('UPDATE tasks SET status = ?, completed_at = NOW() WHERE id = ?', [status, id]);
+  } else {
+    await db.run('UPDATE tasks SET status = ?, completed_at = NULL WHERE id = ?', [status, id]);
+  }
   return getOne(userId, id);
 }
 
