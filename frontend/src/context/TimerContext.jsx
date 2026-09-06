@@ -43,6 +43,14 @@ function sendNotif(title, body) {
   }
 }
 
+// Defensive: only ever treat a genuinely positive, finite number of seconds as
+// a real planned time. Guards against a malformed/legacy localStorage
+// snapshot (or a 0/undefined slipping through) ever being read as "truthy
+// enough" to fire the chime for a task that has no planned time at all.
+function sanitizePlannedSeconds(v) {
+  return (typeof v === 'number' && Number.isFinite(v) && v > 0) ? v : null;
+}
+
 export function TimerProvider({ children }) {
   const { user, loading: authLoading } = useAuth();
   const prevUserRef = useRef(undefined);
@@ -57,7 +65,13 @@ export function TimerProvider({ children }) {
   });
   const [isRunning,        setIsRunning]        = useState(!!restored);
   const [taskTotalSeconds, setTaskTotalSeconds] = useState(restored?.taskTotalSeconds ?? null);
-  const [plannedSeconds,   setPlannedSeconds]   = useState(restored?.plannedSeconds ?? null);
+  const [plannedSeconds,   setPlannedSeconds]   = useState(() => sanitizePlannedSeconds(restored?.plannedSeconds));
+  // Whether the planned-time chime has already fired for the CURRENT session.
+  // Persisted (not a plain ref) so it survives a snapshot restore — otherwise
+  // a tab that gets fully discarded and reloaded (e.g. screen off long enough
+  // for the OS/browser to kill it) would reset this to false and could fire
+  // the chime again on the very next tick after restoring.
+  const [plannedNotified,  setPlannedNotified]  = useState(restored?.plannedNotified ?? false);
 
   const [pomMode,        setPomModeState]     = useState(restored?.pomMode ?? false);
   const [pomPhase,       setPomPhase]         = useState(restored?.pomPhase ?? 'work');
@@ -87,11 +101,10 @@ export function TimerProvider({ children }) {
   const [pausedAt, setPausedAt] = useState(restored?.pausedAt ?? null);
 
   const intervalRef = useRef(null);
-  const plannedNotifiedRef = useRef(false);
   // Mirrors current state for the interval closure below, so it always reads fresh values
   // instead of the ones captured when the interval was created.
   const stateRef = useRef({});
-  stateRef.current = { pomMode, pomPhase, phaseStartedAt, workMinutes, breakMinutes, startedAt, plannedSeconds };
+  stateRef.current = { pomMode, pomPhase, phaseStartedAt, workMinutes, breakMinutes, startedAt, plannedSeconds, plannedNotified };
 
   useEffect(() => {
     clearInterval(intervalRef.current);
@@ -105,8 +118,11 @@ export function TimerProvider({ children }) {
       // Free timer: chime + notify once when planned time is reached, keep counting.
       // Runs here (not in a page component) so it fires regardless of which page is
       // open, or whether the tab is backgrounded.
-      if (!s.pomMode && s.plannedSeconds && !plannedNotifiedRef.current && elapsedNow >= s.plannedSeconds) {
-        plannedNotifiedRef.current = true;
+      // Defensive check (not just a truthy test): only a real, positive, finite
+      // planned time can ever trigger this, however s.plannedSeconds got here.
+      const hasPlannedTime = typeof s.plannedSeconds === 'number' && Number.isFinite(s.plannedSeconds) && s.plannedSeconds > 0;
+      if (!s.pomMode && hasPlannedTime && !s.plannedNotified && elapsedNow >= s.plannedSeconds) {
+        setPlannedNotified(true);
         playChime();
         sendNotif('Studifly', "You've reached your planned time! Keep going or wrap up?");
         toast("⏰ You've reached your planned time! Keep going or wrap up?", { duration: 6000 });
@@ -153,13 +169,13 @@ export function TimerProvider({ children }) {
     if (isRunning && activeSession) {
       saveSnapshot({
         activeSession, startedAt, pomMode, pomPhase, phaseStartedAt,
-        taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds,
+        taskTotalSeconds, plannedSeconds, plannedNotified, accumulatedBreakSeconds,
         isPaused, pausedAt,
       });
     } else {
       saveSnapshot(null);
     }
-  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, accumulatedBreakSeconds, isPaused, pausedAt]);
+  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, plannedNotified, accumulatedBreakSeconds, isPaused, pausedAt]);
 
   function setWorkMinutes(raw) {
     const n = Math.max(1, parseInt(raw, 10) || 1);
@@ -188,9 +204,9 @@ export function TimerProvider({ children }) {
     setActiveSession(session);
     setStartedAt(now);
     setTaskTotalSeconds(taskTotal > 0 ? taskTotal : null);
-    setPlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null);
+    setPlannedSeconds(sanitizePlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null));
     setAccumulatedBreakSeconds(0);
-    plannedNotifiedRef.current = false;
+    setPlannedNotified(false);
     setIsRunning(true);
     if (pomMode) {
       setPomPhase('work');
@@ -244,7 +260,7 @@ export function TimerProvider({ children }) {
     setTaskTotalSeconds(null);
     setPlannedSeconds(null);
     setAccumulatedBreakSeconds(0);
-    plannedNotifiedRef.current = false;
+    setPlannedNotified(false);
     setPhaseStartedAt(null);
     setPomPhase('work');
     setPomSecondsLeft(workMinutes * 60);
