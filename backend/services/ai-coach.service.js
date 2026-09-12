@@ -4,6 +4,7 @@ const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 const { getTaskPredictions } = require('./prediction.service');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
 function fmtHour(h) {
   if (h === 0)  return '12am';
@@ -181,7 +182,7 @@ async function chat(userId, newUserMessage) {
   ];
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.1-8b-instant',
+    model: GROQ_MODEL,
     messages: groqMessages,
     max_tokens: 300,
   });
@@ -214,7 +215,7 @@ async function getCourseInsight(userId, { course_name, stats, task_names = [] })
     `${stats.actual_hours}h actually studied. ${taskList}`;
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.1-8b-instant',
+    model: GROQ_MODEL,
     messages: [
       {
         role: 'system',

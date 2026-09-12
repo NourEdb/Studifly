@@ -4,6 +4,7 @@ const db = require('../database/db');
 const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
 
 function createTransporter() {
   return nodemailer.createTransport({
@@ -92,7 +93,7 @@ async function generateAISummary(stats) {
     `Plain text only. No bullet points, no markdown, no asterisks. Keep it under 200 words total.`;
 
   const completion = await groq.chat.completions.create({
-    model: 'llama-3.1-8b-instant',
+    model: GROQ_MODEL,
     messages: [
       {
         role: 'system',
