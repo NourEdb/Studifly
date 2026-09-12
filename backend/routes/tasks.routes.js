@@ -15,6 +15,13 @@ router.post('/',
   validate,
   ctrl.create
 );
+router.patch('/reorder',
+  body('ids').isArray({ min: 1 }),
+  body('ids.*').isInt({ min: 1 }),
+  validate,
+  ctrl.reorder
+);
+router.patch('/reset-order', ctrl.resetOrder);
 router.get('/:id', ctrl.getOne);
 router.put('/:id',
   body('category').optional({ nullable: true }).isIn(['exam', 'homework', 'project', 'other']),

@@ -45,13 +45,67 @@ async function getAll(userId, filters = {}) {
     sql += ' AND t.due_date >= ? AND t.due_date < ?';
     params.push(start.slice(0, 10), end.slice(0, 10));
   }
-  sql += ` ORDER BY (t.status = 'completed'),
-           CASE WHEN t.status = 'completed' THEN t.completed_at END DESC NULLS LAST,
-           t.due_date ASC NULLS LAST, t.created_at DESC`;
+  // Completed tasks always sink to the bottom, newest-completed first. Among
+  // non-completed tasks: callers that want the Tasks page's manual drag order
+  // get sort_order first (falling back to the due-date rule for any task that
+  // has never been touched by a drag); callers that explicitly ask to ignore
+  // that custom order (course detail, task-picker dropdowns, etc.) always get
+  // the plain due-date-then-newest rule, regardless of any custom order.
+  const dueDateRule = `t.due_date ASC NULLS LAST, t.created_at DESC`;
+  sql += filters.ignore_order
+    ? ` ORDER BY (t.status = 'completed'),
+             CASE WHEN t.status = 'completed' THEN t.completed_at END DESC NULLS LAST,
+             ${dueDateRule}`
+    : ` ORDER BY (t.status = 'completed'),
+             CASE WHEN t.status = 'completed' THEN t.completed_at END DESC NULLS LAST,
+             t.sort_order ASC NULLS LAST,
+             ${dueDateRule}`;
 
   const rows = await db.all(sql, params);
   const now = new Date().toISOString().slice(0, 10);
   return rows.map(r => ({ ...r, overdue: r.status !== 'completed' && r.due_date && r.due_date < now }));
+}
+
+// Same due-date-then-newest comparator used as the default order, so a brand
+// new task can be merged into an existing custom (dragged) order at the spot
+// it would occupy under that default rule, instead of at the top or bottom.
+function compareByDueDateRule(a, b) {
+  const aHasDue = !!a.due_date;
+  const bHasDue = !!b.due_date;
+  if (aHasDue && bHasDue) {
+    if (a.due_date < b.due_date) return -1;
+    if (a.due_date > b.due_date) return 1;
+    return new Date(b.created_at) - new Date(a.created_at);
+  }
+  if (aHasDue !== bHasDue) return aHasDue ? -1 : 1;
+  return new Date(b.created_at) - new Date(a.created_at);
+}
+
+// Called right after a new non-completed task is inserted. If the user has
+// never dragged anything, every task's sort_order is still NULL and the
+// default due-date rule in getAll() already ranks the new task correctly —
+// nothing to do. Otherwise, merge the new task into the existing custom order
+// at the position the due-date rule would place it, then re-lock the whole
+// arrangement with fresh sequential sort_order values.
+async function insertIntoCustomOrder(userId, newTask) {
+  const existing = await db.all(
+    `SELECT id, due_date, created_at, sort_order FROM tasks
+     WHERE user_id = ? AND status != 'completed' AND id != ?
+     ORDER BY sort_order ASC NULLS LAST, due_date ASC NULLS LAST, created_at DESC`,
+    [userId, newTask.id]
+  );
+  const hasCustomOrder = existing.some(t => t.sort_order !== null);
+  if (!hasCustomOrder) return;
+
+  let insertAt = existing.length;
+  for (let i = 0; i < existing.length; i++) {
+    if (compareByDueDateRule(newTask, existing[i]) < 0) { insertAt = i; break; }
+  }
+  const ids = existing.map(t => t.id);
+  ids.splice(insertAt, 0, newTask.id);
+  for (let i = 0; i < ids.length; i++) {
+    await db.run('UPDATE tasks SET sort_order = ? WHERE id = ? AND user_id = ?', [i, ids[i], userId]);
+  }
 }
 
 const VALID_CATEGORIES = ['exam', 'homework', 'project', 'other'];
@@ -62,6 +116,9 @@ async function create(userId, body) {
     'INSERT INTO tasks (user_id, course_id, name, activity_type, planned_time, due_date, status, category) VALUES (?,?,?,?,?,?,?,?) RETURNING *',
     [userId, course_id || null, name, activity_type, planned_time || 0, due_date || null, status || 'pending', VALID_CATEGORIES.includes(category) ? category : 'other']
   );
+  if (task.status !== 'completed') {
+    await insertIntoCustomOrder(userId, task);
+  }
   return getOne(userId, task.id);
 }
 
@@ -110,4 +167,23 @@ async function remove(userId, id) {
   await db.run('DELETE FROM tasks WHERE id = ?', [id]);
 }
 
-module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove };
+// Called after a drag-and-drop (or move up/down) reorder — ids is the full
+// non-completed list in its new order. Assigning every one of them a
+// sort_order (rather than just the moved task) is what makes the custom
+// order "stick": once set, none of these rows are NULL any more, so the
+// due-date fallback in getAll() never applies to them again.
+async function reorder(userId, ids) {
+  for (let i = 0; i < ids.length; i++) {
+    await db.run('UPDATE tasks SET sort_order = ? WHERE id = ? AND user_id = ?', [i, ids[i], userId]);
+  }
+  return getAll(userId, {});
+}
+
+// "Reset to due-date order" — drops the custom order entirely so getAll()'s
+// due-date-then-newest fallback takes over again for every task.
+async function resetOrder(userId) {
+  await db.run('UPDATE tasks SET sort_order = NULL WHERE user_id = ?', [userId]);
+  return getAll(userId, {});
+}
+
+module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove, reorder, resetOrder };

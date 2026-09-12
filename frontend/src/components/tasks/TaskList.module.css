@@ -1,5 +1,18 @@
 .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 .filters { display: flex; gap: 8px; }
+.resetOrderLink {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.resetOrderLink:hover { color: var(--color-purple); }
 .filters select {
   padding: 8px 12px;
   border: 1.5px solid var(--color-border);
@@ -12,3 +25,46 @@
 .filters select:focus { border-color: var(--color-purple); }
 .list { display: flex; flex-direction: column; gap: 10px; }
 .empty { text-align: center; padding: 48px; color: var(--color-text-muted); }
+
+.dragRow {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s, opacity 0.15s;
+}
+.dragRow.dragging { opacity: 0.5; }
+.dragRow.dragOver { background: var(--color-purple-tint); }
+.dragHandle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  cursor: grab;
+  font-size: 1.1rem;
+  user-select: none;
+  touch-action: none;
+}
+.dragHandle:active { cursor: grabbing; }
+.dragContent { flex: 1; min-width: 0; }
+.moveBtns { display: none; flex-direction: column; gap: 2px; justify-content: center; flex-shrink: 0; }
+.moveBtn {
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 22px;
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.moveBtn:hover:not(:disabled) { border-color: var(--color-purple); color: var(--color-purple); }
+.moveBtn:disabled { opacity: 0.35; cursor: default; }
+
+@media (max-width: 640px) {
+  .dragHandle { display: none; }
+  .moveBtns { display: flex; }
+}

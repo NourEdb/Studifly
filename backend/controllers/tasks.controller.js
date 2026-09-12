@@ -7,5 +7,7 @@ const create = async (req, res, next) => { try { res.status(201).json(await svc.
 const update = async (req, res, next) => { try { res.json(await svc.update(req.user.id, req.params.id, req.body)); } catch (e) { next(e); } };
 const updateStatus = async (req, res, next) => { try { res.json(await svc.updateStatus(req.user.id, req.params.id, req.body.status)); } catch (e) { next(e); } };
 const remove = async (req, res, next) => { try { await svc.remove(req.user.id, req.params.id); res.status(204).end(); } catch (e) { next(e); } };
+const reorder = async (req, res, next) => { try { res.json(await svc.reorder(req.user.id, req.body.ids)); } catch (e) { next(e); } };
+const resetOrder = async (req, res, next) => { try { res.json(await svc.resetOrder(req.user.id)); } catch (e) { next(e); } };
 
-module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove };
+module.exports = { getAll, getOne, getCustomActivityTypes, create, update, updateStatus, remove, reorder, resetOrder };

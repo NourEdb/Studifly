@@ -11,18 +11,31 @@ const LS_BREAK_KEY   = 'studifly_pomodoro_break_minutes';
 const WORK_MIN_DEFAULT  = 25;
 const BREAK_MIN_DEFAULT = 5;
 
+// Shown one at random when a post-session break starts.
+const BREAK_IDEAS = [
+  'Try a 1-minute breathing exercise — inhale for 4 seconds, hold for 4, exhale for 4.',
+  'Stand up and do a few desk stretches.',
+  'Take a short walk, even just around the room.',
+  'Drink a full glass of water.',
+  'Jot a couple of lines in a journal about how the session went.',
+  'Look away from the screen — focus on something far away for 20 seconds.',
+];
+
 function loadStoredMinutes(key, fallback) {
   const n = parseInt(localStorage.getItem(key), 10);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
-// Only a RUNNING timer is persisted — idle/default state doesn't need to survive a refresh.
+// A snapshot is valid if it describes either a running study session or an
+// active post-session break — only one of the two can ever be true at once.
 function loadSnapshot() {
   try {
     const raw = localStorage.getItem(SNAPSHOT_KEY);
     if (!raw) return null;
     const snap = JSON.parse(raw);
-    return snap?.activeSession && snap?.startedAt ? snap : null;
+    const validSession = snap?.activeSession && snap?.startedAt;
+    const validBreak = snap?.breakActive && snap?.breakStartedAt && snap?.breakDurationSec;
+    return (validSession || validBreak) ? snap : null;
   } catch {
     return null;
   }
@@ -59,11 +72,11 @@ export function TimerProvider({ children }) {
   const [activeSession,    setActiveSession]    = useState(restored?.activeSession ?? null);
   const [startedAt,        setStartedAt]        = useState(restored?.startedAt ?? null);
   const [elapsedSeconds,   setElapsedSeconds]   = useState(() => {
-    if (!restored) return 0;
+    if (!restored?.activeSession) return 0;
     const referencePoint = restored.isPaused && restored.pausedAt ? restored.pausedAt : Date.now();
     return Math.max(0, Math.floor((referencePoint - restored.startedAt) / 1000));
   });
-  const [isRunning,        setIsRunning]        = useState(!!restored);
+  const [isRunning,        setIsRunning]        = useState(!!restored?.activeSession);
   const [taskTotalSeconds, setTaskTotalSeconds] = useState(restored?.taskTotalSeconds ?? null);
   const [plannedSeconds,   setPlannedSeconds]   = useState(() => sanitizePlannedSeconds(restored?.plannedSeconds));
   // Whether the planned-time chime has already fired for the CURRENT session.
@@ -100,6 +113,22 @@ export function TimerProvider({ children }) {
   const [isPaused, setIsPaused] = useState(restored?.isPaused ?? false);
   const [pausedAt, setPausedAt] = useState(restored?.pausedAt ?? null);
 
+  // --- Post-session break (free timer only) --------------------------------
+  const [breakActive,      setBreakActive]      = useState(restored?.breakActive ?? false);
+  const [breakStartedAt,   setBreakStartedAt]   = useState(restored?.breakStartedAt ?? null);
+  const [breakDurationSec, setBreakDurationSec] = useState(restored?.breakDurationSec ?? null);
+  const [breakIdea,        setBreakIdea]        = useState(restored?.breakIdea ?? null);
+  const [breakNotified,    setBreakNotified]    = useState(restored?.breakNotified ?? false);
+  const [breakSecondsLeft, setBreakSecondsLeft] = useState(() => {
+    if (restored?.breakActive && restored?.breakStartedAt && restored?.breakDurationSec) {
+      return Math.max(0, restored.breakDurationSec - Math.floor((Date.now() - restored.breakStartedAt) / 1000));
+    }
+    return 0;
+  });
+  const breakAudioFiredRef = useRef(false);
+  const breakStateRef = useRef({});
+  breakStateRef.current = { breakStartedAt, breakDurationSec, breakNotified };
+
   const intervalRef = useRef(null);
   // Mirrors current state for the interval closure below, so it always reads fresh values
   // instead of the ones captured when the interval was created.
@@ -115,7 +144,8 @@ export function TimerProvider({ children }) {
   // since the audio rendering graph keeps running even when JS timers don't.
   // The tick loop remains the single source of truth for state (phase,
   // elapsed, notifications) — it just skips re-playing a chime that audio
-  // already handled, tracked via these two refs.
+  // already handled, tracked via these refs. The post-session break chime
+  // (below) reuses the exact same scheduling primitive.
   const lastAudioBoundaryMsRef = useRef(null); // last Pomodoro phase-boundary (ms) confirmed chimed via audio
   const freeAudioFiredRef      = useRef(false); // whether the free-timer's scheduled chime already played
 
@@ -152,6 +182,15 @@ export function TimerProvider({ children }) {
     const delaySeconds = (boundaryMs - Date.now()) / 1000;
     scheduleChime(delaySeconds, undefined, () => {
       freeAudioFiredRef.current = true;
+    });
+  }
+
+  // Also one-shot, same pattern as the free-timer chime.
+  function scheduleBreakChime(durationSec, startMs) {
+    const boundaryMs = startMs + durationSec * 1000;
+    const delaySeconds = (boundaryMs - Date.now()) / 1000;
+    scheduleChime(delaySeconds, undefined, () => {
+      breakAudioFiredRef.current = true;
     });
   }
 
@@ -225,7 +264,35 @@ export function TimerProvider({ children }) {
     return () => clearInterval(intervalRef.current);
   }, [isRunning, startedAt, isPaused]);
 
-  // Snapshot a running timer to localStorage so a page refresh can restore it.
+  // Independent tick for the post-session break countdown — runs regardless
+  // of the study-timer's isRunning state, since a break only ever happens
+  // after a session has already been stopped.
+  const breakIntervalRef = useRef(null);
+  useEffect(() => {
+    clearInterval(breakIntervalRef.current);
+    if (!breakActive || breakStartedAt === null) return;
+
+    function breakTick() {
+      const s = breakStateRef.current;
+      const elapsed = Math.floor((Date.now() - s.breakStartedAt) / 1000);
+      const left = Math.max(0, s.breakDurationSec - elapsed);
+      setBreakSecondsLeft(left);
+
+      if (left <= 0 && !s.breakNotified) {
+        setBreakNotified(true);
+        if (!breakAudioFiredRef.current) playChime();
+        sendNotif('Studifly', "Break's over — ready to get back to it?");
+        toast("☕ Break's over! Ready for the next session?", { duration: 6000 });
+      }
+    }
+
+    breakTick();
+    breakIntervalRef.current = setInterval(breakTick, 1000);
+    return () => clearInterval(breakIntervalRef.current);
+  }, [breakActive, breakStartedAt]);
+
+  // Snapshot a running timer OR an active break to localStorage so a page
+  // refresh can restore it — the two are mutually exclusive.
   useEffect(() => {
     if (isRunning && activeSession) {
       saveSnapshot({
@@ -233,10 +300,12 @@ export function TimerProvider({ children }) {
         taskTotalSeconds, plannedSeconds, plannedNotified, accumulatedBreakSeconds,
         isPaused, pausedAt,
       });
+    } else if (breakActive) {
+      saveSnapshot({ breakActive, breakStartedAt, breakDurationSec, breakIdea, breakNotified });
     } else {
       saveSnapshot(null);
     }
-  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, plannedNotified, accumulatedBreakSeconds, isPaused, pausedAt]);
+  }, [isRunning, activeSession, startedAt, pomMode, pomPhase, phaseStartedAt, taskTotalSeconds, plannedSeconds, plannedNotified, accumulatedBreakSeconds, isPaused, pausedAt, breakActive, breakStartedAt, breakDurationSec, breakIdea, breakNotified]);
 
   function setWorkMinutes(raw) {
     const n = Math.max(1, parseInt(raw, 10) || 1);
@@ -261,6 +330,10 @@ export function TimerProvider({ children }) {
   }
 
   function startTimer(session, taskTotal = null, plannedMinutes = null) {
+    // Starting a new session while a post-session break is pending means the
+    // user chose to skip it — can't be "on a break" and studying at once.
+    if (breakActive) skipBreak();
+
     const now = Date.now();
     const planned = sanitizePlannedSeconds(plannedMinutes > 0 ? plannedMinutes * 60 : null);
     setActiveSession(session);
@@ -360,9 +433,39 @@ export function TimerProvider({ children }) {
     saveSnapshot(null);
   }
 
-  // If we just restored an already-running (and not paused) session from the
-  // snapshot — i.e. this mount is a page reload mid-session, not a fresh
-  // start or an explicit resume — neither of those call sites ran, so the
+  // Post-session break — offered after stopping a free-timer session. This is
+  // never counted as study time: it only ever runs once the study session has
+  // already been stopped and saved, entirely independent of the study state.
+  function startBreak(minutes) {
+    if (isRunning) return; // can't be studying and on a break at once
+    const now = Date.now();
+    const durSec = Math.max(1, Math.round(minutes)) * 60;
+    setBreakActive(true);
+    setBreakStartedAt(now);
+    setBreakDurationSec(durSec);
+    setBreakIdea(BREAK_IDEAS[Math.floor(Math.random() * BREAK_IDEAS.length)]);
+    setBreakNotified(false);
+    setBreakSecondsLeft(durSec);
+    breakAudioFiredRef.current = false;
+    unlockAudio(); // starting a break is a user gesture too
+    scheduleBreakChime(durSec, now);
+  }
+
+  function skipBreak() {
+    cancelScheduledChime();
+    setBreakActive(false);
+    setBreakStartedAt(null);
+    setBreakDurationSec(null);
+    setBreakIdea(null);
+    setBreakNotified(false);
+    setBreakSecondsLeft(0);
+    breakAudioFiredRef.current = false;
+    saveSnapshot(null);
+  }
+
+  // If we just restored an already-running (and not paused) session, or an
+  // active break, from the snapshot — i.e. this mount is a page reload, not a
+  // fresh start or an explicit resume — none of those call sites ran, so the
   // precise audio schedule needs to be established here instead. Runs once,
   // using the values restored at construction time above.
   useEffect(() => {
@@ -372,6 +475,8 @@ export function TimerProvider({ children }) {
       } else if (!pomMode && plannedSeconds && !plannedNotified) {
         scheduleFreeChime(plannedSeconds, startedAt);
       }
+    } else if (breakActive && breakStartedAt !== null && breakDurationSec !== null && !breakNotified) {
+      scheduleBreakChime(breakDurationSec, breakStartedAt);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -381,7 +486,7 @@ export function TimerProvider({ children }) {
   // boot (loading=true), so a restored snapshot survives a page refresh.
   useEffect(() => {
     if (authLoading) return;
-    if (prevUserRef.current && !user) stopTimer();
+    if (prevUserRef.current && !user) { stopTimer(); skipBreak(); }
     prevUserRef.current = user;
   }, [user, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -391,6 +496,7 @@ export function TimerProvider({ children }) {
       pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes, isPaused,
       startTimer, stopTimer, setPomMode, setWorkMinutes, setBreakMinutes, getBreakSeconds,
       pauseTimer, resumeTimer,
+      breakActive, breakSecondsLeft, breakIdea, startBreak, skipBreak,
     }}>
       {children}
     </TimerContext.Provider>

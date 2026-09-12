@@ -48,7 +48,7 @@ function Stars({ value, title }) {
 }
 
 export default function TrackerPage() {
-  const { tasks, refresh: refreshTasks } = useTasks();
+  const { tasks, refresh: refreshTasks } = useTasks({ ignore_order: 1 });
   const { sessions, loading, remove, refresh: refreshSessions } = useSessions({ limit: 50 });
   const { blocks, refresh: refreshBlocks } = useStudyBlocks();
   const { isRunning, handleStart } = useTimer();

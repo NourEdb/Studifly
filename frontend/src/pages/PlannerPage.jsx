@@ -11,7 +11,7 @@ import styles from './PlannerPage.module.css';
 
 export default function PlannerPage() {
   const [view, setView] = useState('week');
-  const { tasks, loading: tasksLoading, edit: editTask } = useTasks();
+  const { tasks, loading: tasksLoading, edit: editTask } = useTasks({ ignore_order: 1 });
   const { sessions, loading: sessionsLoading } = useSessions({ limit: 200 });
   const { events, loading: eventsLoading, addEvent, editEvent, removeEvent } = useEvents();
   const { blocks, loading: blocksLoading, add: addBlock, edit: editBlock, remove: removeBlock } = useStudyBlocks();

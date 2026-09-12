@@ -22,17 +22,22 @@ function fmtDuration(seconds) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+const BREAK_PRESETS = [5, 10, 15];
+
 export default function TimerWidget({ tasks, blocks, onSessionSaved }) {
   const [selection, setSelection]           = useState('');
   const [stoppedSession, setStoppedSession] = useState(null);
   const [chimeType, setChimeTypeUI]         = useState(getChimeType());
   const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [showBreakOffer, setShowBreakOffer] = useState(false);
+  const [customBreakMin, setCustomBreakMin] = useState('');
 
   const {
     elapsedSeconds, isRunning, activeSession, taskTotalSeconds,
     pomMode, pomPhase, pomSecondsLeft, workMinutes, breakMinutes,
     setPomMode, setWorkMinutes, setBreakMinutes,
     isPaused, pauseTimer, resumeTimer,
+    breakActive, breakSecondsLeft, breakIdea, startBreak, skipBreak,
     handleStart, handleStop,
   } = useTimer();
 
@@ -40,13 +45,18 @@ export default function TimerWidget({ tasks, blocks, onSessionSaved }) {
     // Both modes can now trigger a browser notification (planned-time reached,
     // or a Pomodoro phase change), so always ask up front.
     requestNotifPermission();
+    setShowBreakOffer(false); // starting directly counts as skipping any pending offer
     const { taskId, studyBlockId, name, plannedMinutes } = parseSelection(selection, tasks, blocks);
     await handleStart(taskId, name, plannedMinutes, studyBlockId);
   }
 
   async function stop() {
+    // Captured here (not read later) since the mode toggle re-enables the
+    // instant a session stops, so pomMode itself could change while the
+    // post-session reflection modal is still open.
+    const wasPomMode = pomMode;
     const session = await handleStop();
-    if (session) setStoppedSession(session);
+    if (session) setStoppedSession({ ...session, _wasPomMode: wasPomMode });
   }
 
   async function stopFromFullscreen() {
@@ -55,9 +65,19 @@ export default function TimerWidget({ tasks, blocks, onSessionSaved }) {
   }
 
   function handleReflectionDone() {
+    const offerBreak = !stoppedSession?._wasPomMode;
     setStoppedSession(null);
     setSelection('');
+    if (offerBreak) setShowBreakOffer(true);
     onSessionSaved?.();
+  }
+
+  function startCustomBreak() {
+    const mins = parseInt(customBreakMin, 10);
+    if (!mins || mins < 1) return;
+    startBreak(mins);
+    setShowBreakOffer(false);
+    setCustomBreakMin('');
   }
 
   function handleChimeTypeChange(e) {
@@ -147,21 +167,70 @@ export default function TimerWidget({ tasks, blocks, onSessionSaved }) {
         </div>
 
         {!isRunning ? (
-          <div className={styles.controls}>
-            <div className={styles.field}>
-              <label>Select task (optional)</label>
-              <TaskSubtaskSelect tasks={tasks} blocks={blocks} value={selection} onChange={setSelection} />
+          breakActive ? (
+            <div className={styles.breakPanel}>
+              {breakSecondsLeft > 0 ? (
+                <>
+                  <p className={styles.breakLabel}>☕ On a break</p>
+                  <TimerDisplay seconds={breakSecondsLeft} size="md" />
+                  <p className={styles.breakIdea}>{breakIdea}</p>
+                  <button type="button" className={styles.breakEndBtn} onClick={skipBreak}>
+                    End break early
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className={styles.breakLabel}>☕ Break's over!</p>
+                  <Button onClick={skipBreak} size="lg" fullWidth>▶ Start next session</Button>
+                </>
+              )}
             </div>
-            <Button onClick={start} size="lg" fullWidth>▶ Start Timer</Button>
-            <div className={styles.soundRow}>
-              <select className={styles.chimeSelect} value={chimeType} onChange={handleChimeTypeChange}>
-                {CHIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <button type="button" className={styles.testSoundBtn} onClick={testSound}>
-                🔊 Test sound
-              </button>
+          ) : (
+            <div className={styles.controls}>
+              {showBreakOffer && (
+                <div className={styles.breakOffer}>
+                  <div className={styles.breakOfferHeader}>
+                    <p className={styles.breakOfferTitle}>Take a break?</p>
+                    <button type="button" className={styles.breakSkipBtn} onClick={() => setShowBreakOffer(false)}>
+                      Skip
+                    </button>
+                  </div>
+                  <div className={styles.breakOfferBtns}>
+                    {BREAK_PRESETS.map(m => (
+                      <button key={m} type="button" className={styles.breakPresetBtn} onClick={() => { startBreak(m); setShowBreakOffer(false); }}>
+                        {m} min
+                      </button>
+                    ))}
+                    <input
+                      type="number"
+                      min="1"
+                      className={styles.breakCustomInput}
+                      placeholder="Custom"
+                      value={customBreakMin}
+                      onChange={e => setCustomBreakMin(e.target.value)}
+                      aria-label="Custom break minutes"
+                    />
+                    <button type="button" className={styles.breakPresetBtn} disabled={!customBreakMin} onClick={startCustomBreak}>
+                      Go
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className={styles.field}>
+                <label>Select task (optional)</label>
+                <TaskSubtaskSelect tasks={tasks} blocks={blocks} value={selection} onChange={setSelection} />
+              </div>
+              <Button onClick={start} size="lg" fullWidth>▶ Start Timer</Button>
+              <div className={styles.soundRow}>
+                <select className={styles.chimeSelect} value={chimeType} onChange={handleChimeTypeChange}>
+                  {CHIME_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+                <button type="button" className={styles.testSoundBtn} onClick={testSound}>
+                  🔊 Test sound
+                </button>
+              </div>
             </div>
-          </div>
+          )
         ) : (
           <div className={styles.runningControls}>
             {isPaused ? (

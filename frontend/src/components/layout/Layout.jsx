@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import NotificationBell from './NotificationBell';
 import MoodCheckinModal, { wasSkippedToday } from '../mood/MoodCheckinModal';
+import FocusSoundsPanel from '../focus/FocusSoundsPanel';
 import { getTodayCheckin } from '../../api/mood.api';
 import { useAuth } from '../../context/AuthContext';
 import styles from './Layout.module.css';
@@ -38,6 +39,7 @@ export default function Layout() {
     <div className={styles.layout}>
       {showMoodModal && <MoodCheckinModal onClose={() => setShowMoodModal(false)} />}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <FocusSoundsPanel />
 
       <div className={styles.main}>
         <header className={styles.topbar}>

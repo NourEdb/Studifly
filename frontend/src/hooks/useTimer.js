@@ -71,6 +71,11 @@ export default function useTimer() {
     isPaused:         ctx.isPaused,
     pauseTimer:       ctx.pauseTimer,
     resumeTimer:      ctx.resumeTimer,
+    breakActive:      ctx.breakActive,
+    breakSecondsLeft: ctx.breakSecondsLeft,
+    breakIdea:        ctx.breakIdea,
+    startBreak:       ctx.startBreak,
+    skipBreak:        ctx.skipBreak,
     handleStart,
     handleStop,
   };

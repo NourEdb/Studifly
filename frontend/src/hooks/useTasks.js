@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTasks, createTask, updateTask, updateTaskStatus, deleteTask } from '../api/tasks.api';
+import { getTasks, createTask, updateTask, updateTaskStatus, reorderTasks, resetTaskOrder, deleteTask } from '../api/tasks.api';
 import toast from 'react-hot-toast';
 
 export default function useTasks(filters = {}) {
@@ -23,7 +23,10 @@ export default function useTasks(filters = {}) {
 
   async function add(data) {
     const task = await createTask(data);
-    setTasks(prev => [task, ...prev]);
+    // Refetch rather than optimistically prepending — the server decides
+    // where the new task slots into the due-date/custom order, which is
+    // almost never "at the top".
+    await fetch();
     return task;
   }
 
@@ -44,11 +47,23 @@ export default function useTasks(filters = {}) {
     return task;
   }
 
+  async function reorder(ids) {
+    const updated = await reorderTasks(ids);
+    setTasks(updated);
+    return updated;
+  }
+
+  async function resetOrder() {
+    const updated = await resetTaskOrder();
+    setTasks(updated);
+    return updated;
+  }
+
   // Patches the in-memory list only (no API call) — for reflecting a status
   // change made elsewhere (e.g. the timer already updated the backend).
   function updateLocal(id, patch) {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, ...patch } : t));
   }
 
-  return { tasks, loading, add, edit, remove, setStatus, updateLocal, refresh: fetch };
+  return { tasks, loading, add, edit, remove, setStatus, updateLocal, reorder, resetOrder, refresh: fetch };
 }

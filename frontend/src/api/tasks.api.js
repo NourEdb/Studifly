@@ -5,4 +5,6 @@ export const getCustomActivityTypes = ()         => client.get('/tasks/custom-ac
 export const createTask             = data       => client.post('/tasks', data).then(r => r.data);
 export const updateTask             = (id, data) => client.put(`/tasks/${id}`, data).then(r => r.data);
 export const updateTaskStatus       = (id, status) => client.patch(`/tasks/${id}/status`, { status }).then(r => r.data);
+export const reorderTasks           = ids         => client.patch('/tasks/reorder', { ids }).then(r => r.data);
+export const resetTaskOrder         = ()          => client.patch('/tasks/reset-order').then(r => r.data);
 export const deleteTask             = id         => client.delete(`/tasks/${id}`);
