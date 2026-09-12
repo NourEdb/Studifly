@@ -1,0 +1,22 @@
+.page { display: flex; flex-direction: column; gap: 16px; }
+
+.viewToggle {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.viewBtn {
+  padding: 7px 20px;
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.viewBtnActive { background: var(--color-purple); color: #fff; }
+.viewBtn:not(.viewBtnActive):hover { background: rgba(108, 77, 196, 0.08); color: var(--color-text); }

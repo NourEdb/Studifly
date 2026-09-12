@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getCustomTypes } from '../../api/events.api';
 import styles from './EventFormModal.module.css';
 
-const BUILT_IN_TYPES = new Set(['exam', 'deadline', 'meeting', 'reminder', 'work', 'other']);
+const BUILT_IN_TYPES = new Set(['exam', 'deadline', 'meeting', 'reminder', 'work', 'personal', 'other']);
 
 const TYPES = [
   { value: 'exam',     label: 'Exam' },
@@ -10,6 +10,7 @@ const TYPES = [
   { value: 'meeting',  label: 'Meeting' },
   { value: 'reminder', label: 'Reminder' },
   { value: 'work',     label: 'Work' },
+  { value: 'personal', label: 'Personal' },
   { value: 'other',    label: 'Other' },
 ];
 

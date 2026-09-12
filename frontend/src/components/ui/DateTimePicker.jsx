@@ -34,7 +34,8 @@ export default function DateTimePicker({
         showTimeSelect={showTime}
         timeIntervals={5}
         timeCaption="Time"
-        dateFormat={showTime ? 'MMM d, yyyy h:mm aa' : 'MMM d, yyyy'}
+        timeFormat="HH:mm"
+        dateFormat={showTime ? 'MMM d, yyyy HH:mm' : 'MMM d, yyyy'}
         placeholderText={placeholder}
         autoComplete="off"
         shouldCloseOnSelect={!showTime}

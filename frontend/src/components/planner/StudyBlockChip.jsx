@@ -1,13 +1,5 @@
+import { fmtTime24 as fmt } from '../../utils/formatTime';
 import styles from './StudyBlockChip.module.css';
-
-function fmt(timeStr) {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  const hour = parseInt(h, 10);
-  const ampm = hour >= 12 ? 'pm' : 'am';
-  const h12  = hour % 12 || 12;
-  return `${h12}:${m}${ampm}`;
-}
 
 export default function StudyBlockChip({ block, onEdit, onDelete }) {
   const color = block.course_color || 'var(--color-purple)';

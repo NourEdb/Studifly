@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { startOfISOWeek, addDays, addWeeks, subWeeks } from 'date-fns';
+import { startOfWeek, addDays, addWeeks, subWeeks } from 'date-fns';
 import WeekNav from './WeekNav';
 import PlannerDayColumn from './PlannerDayColumn';
 import styles from './WeeklyPlanner.module.css';
@@ -9,7 +9,8 @@ export default function WeeklyPlanner({
   blocks, onAddBlock, onEditBlock, onDeleteBlock,
   onAddEvent, onEditEvent, onDeleteEvent,
 }) {
-  const [weekStart, setWeekStart] = useState(() => startOfISOWeek(new Date()));
+  // Sunday-first (Israel), not ISO 8601 Monday-first.
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 0 }));
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   return (

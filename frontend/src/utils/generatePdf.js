@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { getSessions } from '../api/sessions.api';
 import { getTasks } from '../api/tasks.api';
+import { fmtTime24 } from './formatTime';
 
 // ── constants ─────────────────────────────────────────────────────────────────
 const PW = 210;
@@ -131,7 +132,7 @@ function addImage(doc, img, y) {
 function fmtHours(s)    { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return h > 0 ? `${h}h ${m}m` : `${m}m`; }
 function fmtDuration(s) { if (!s) return '—'; const m = Math.round(s/60); return m < 60 ? `${m} min` : `${Math.floor(m/60)}h ${m%60}m`; }
 function fmtDate(iso)   { return iso ? new Date(iso).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'; }
-function fmtTime(iso)   { return iso ? new Date(iso).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }) : ''; }
+function fmtTime(iso)   { return fmtTime24(iso); }
 function fmtStatus(s)   { return { pending:'Pending', in_progress:'In Progress', completed:'Done' }[s] ?? s; }
 function fmtPlanned(m)  { if (!m) return '—'; const h = Math.floor(m/60); return h > 0 ? `${h}h ${m%60}m` : `${m}m`; }
 

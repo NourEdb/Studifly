@@ -5,6 +5,10 @@ const ACTIVITY_COLORS = {
   practice: 'purple',
   watching: 'pink',
   other: 'gold',
+  cat_exam: 'red',
+  cat_homework: 'green',
+  cat_project: 'gray',
+  cat_other: 'gold',
 };
 
 export default function Badge({ label, type }) {

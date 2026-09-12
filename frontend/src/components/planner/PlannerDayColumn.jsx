@@ -21,11 +21,22 @@ export default function PlannerDayColumn({
   const dayStr     = format(date, 'yyyy-MM-dd');
   const dayTasks   = tasks.filter(t => t.due_date === dayStr);
   const daySessions = sessions.filter(s => s.start_time?.startsWith(dayStr));
-  const dayEvents  = events.filter(e => e.event_date === dayStr)
-    .sort((a, b) => (a.event_time || '').localeCompare(b.event_time || ''));
+  const dayEvents  = events.filter(e => e.event_date === dayStr);
   const dayBlocks  = (blocks || [])
-    .filter(b => b.plan_date === dayStr && b.start_time && b.end_time)
-    .sort((a, b) => a.start_time.localeCompare(b.start_time));
+    .filter(b => b.plan_date === dayStr && b.start_time && b.end_time);
+
+  // Events and study blocks share one timeline — sort them together by start
+  // time regardless of which kind they are or the order they were added.
+  // Anything without a time (a timeless event) sinks to the bottom.
+  const dayItems = [
+    ...dayEvents.map(e => ({ kind: 'event', key: `ev-${e.id}`, time: e.event_time, data: e })),
+    ...dayBlocks.map(b => ({ kind: 'block', key: `blk-${b.id}`, time: b.start_time, data: b })),
+  ].sort((a, b) => {
+    if (!a.time && !b.time) return 0;
+    if (!a.time) return 1;
+    if (!b.time) return -1;
+    return a.time.localeCompare(b.time);
+  });
 
   const actualSeconds = daySessions.reduce((sum, s) => sum + (s.duration || 0), 0);
   const plannedMin    = dayTasks.reduce((sum, t) => sum + (t.planned_time || 0), 0);
@@ -68,14 +79,12 @@ export default function PlannerDayColumn({
         </div>
 
         <div className={styles.body}>
-          {dayEvents.map(ev => (
-            <EventCard key={`ev-${ev.id}`} event={ev} onEdit={setEditingEvent} onDelete={onDeleteEvent} />
-          ))}
-
-          {dayBlocks.map(b => (
+          {dayItems.map(item => item.kind === 'event' ? (
+            <EventCard key={item.key} event={item.data} onEdit={setEditingEvent} onDelete={onDeleteEvent} />
+          ) : (
             <StudyBlockChip
-              key={`blk-${b.id}`}
-              block={b}
+              key={item.key}
+              block={item.data}
               onEdit={openEditBlock}
               onDelete={onDeleteBlock}
             />

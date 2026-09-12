@@ -1,9 +1,9 @@
-import { format, startOfISOWeek, endOfISOWeek, addWeeks } from 'date-fns';
+import { format, endOfWeek } from 'date-fns';
 import Button from '../ui/Button';
 import styles from './WeekNav.module.css';
 
 export default function WeekNav({ weekStart, onPrev, onNext }) {
-  const end = endOfISOWeek(weekStart);
+  const end = endOfWeek(weekStart, { weekStartsOn: 0 });
   const label = `${format(weekStart, 'MMM d')} – ${format(end, 'MMM d, yyyy')}`;
   return (
     <div className={styles.nav}>

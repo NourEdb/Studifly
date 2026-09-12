@@ -2,23 +2,23 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import Card from '../ui/Card';
 import styles from './WeeklyBarChart.module.css';
 
-// Mirrors the ISO-week (Monday-start, UTC) math in backend/utils/dateHelpers.js
+// Mirrors the week math (Sunday-start, UTC) in backend/utils/dateHelpers.js
 // so the label matches whatever week the backend actually queried.
-function isoWeekMonday(weekStr) {
+function weekStartSunday(weekStr) {
   const [yearStr, weekPart] = weekStr.split('-W');
   const year = parseInt(yearStr, 10);
   const week = parseInt(weekPart, 10);
-  const jan4 = new Date(Date.UTC(year, 0, 4));
-  const dayOfWeek = jan4.getUTCDay() || 7;
-  const weekOneMonday = new Date(jan4);
-  weekOneMonday.setUTCDate(jan4.getUTCDate() - (dayOfWeek - 1));
-  const monday = new Date(weekOneMonday);
-  monday.setUTCDate(weekOneMonday.getUTCDate() + (week - 1) * 7);
-  return monday;
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const jan1Day = jan1.getUTCDay();
+  const weekOneSunday = new Date(jan1);
+  weekOneSunday.setUTCDate(jan1.getUTCDate() - jan1Day);
+  const sunday = new Date(weekOneSunday);
+  sunday.setUTCDate(weekOneSunday.getUTCDate() + (week - 1) * 7);
+  return sunday;
 }
 
 function fmtWeek(w) {
-  const start = isoWeekMonday(w);
+  const start = weekStartSunday(w);
   const end = new Date(start);
   end.setUTCDate(start.getUTCDate() + 6);
 

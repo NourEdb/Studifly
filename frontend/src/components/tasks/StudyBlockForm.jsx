@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import styles from './StudyBlockForm.module.css';
 
+function fmtDueDate(dateStr) {
+  const [, mo, d] = dateStr.split('-');
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[parseInt(mo, 10) - 1]} ${parseInt(d, 10)}`;
+}
+
 function initForm(block, defaultDate) {
   const mins = block?.planned_time || null;
   return {
@@ -26,6 +32,12 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
   const isEdit      = Boolean(block);
   const usePicker   = !task && Array.isArray(tasks);
   const resolvedTask = task || (usePicker ? tasks.find(t => t.id === Number(selectedTaskId)) : null);
+
+  // Non-blocking — a subtask planned after its parent's due date is unusual
+  // but not invalid (e.g. catching up on overdue work), so this only warns.
+  const overdueWarning = (resolvedTask?.due_date && form.plan_date && form.plan_date > resolvedTask.due_date)
+    ? `This task was due ${fmtDueDate(resolvedTask.due_date)}`
+    : null;
 
   function set(field) {
     return e => setForm(prev => ({ ...prev, [field]: e.target.value }));
@@ -111,6 +123,7 @@ export default function StudyBlockForm({ task, tasks, block, defaultDate, onSave
               autoFocus={!usePicker}
             />
           </label>
+          {overdueWarning && <p className={styles.warning}>⚠ {overdueWarning}</p>}
 
           <div className={styles.row}>
             <label className={styles.label}>

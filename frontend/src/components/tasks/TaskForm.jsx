@@ -9,6 +9,12 @@ import styles from './TaskForm.module.css';
 const BUILT_IN_ACTIVITY_TYPES = new Set(['reading', 'practice', 'watching', 'other']);
 
 const ACTIVITY_TYPES = ['reading', 'practice', 'watching', 'other'];
+const CATEGORIES = [
+  { value: 'exam',     label: 'Exam' },
+  { value: 'homework', label: 'Homework' },
+  { value: 'project',  label: 'Project' },
+  { value: 'other',    label: 'Other' },
+];
 
 function minsToHours(mins) {
   return String(mins ? Math.floor(mins / 60) : 0);
@@ -42,6 +48,7 @@ function initForm(initial) {
     course_id:     initial?.course_id || '',
     activity_type: isCustom ? '__custom__' : rawType,
     customType:    isCustom ? rawType : '',
+    category:      initial?.category || 'other',
     planned_hours:   minsToHours(initial?.planned_time),
     planned_minutes: minsToMinutes(initial?.planned_time),
     due_date:      parseDueDate(initial?.due_date),
@@ -126,6 +133,13 @@ export default function TaskForm({ initial, courses, onSave, onClose }) {
               <option key={`custom-${t}`} value={t}>{t}</option>
             ))}
             <option value="__custom__">Other (custom)…</option>
+          </select>
+        </div>
+
+        <div className={styles.field}>
+          <label htmlFor="task-category">Category</label>
+          <select id="task-category" value={form.category} onChange={e => set('category', e.target.value)}>
+            {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
 

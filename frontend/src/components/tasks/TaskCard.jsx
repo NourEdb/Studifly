@@ -3,6 +3,7 @@ import Badge from '../ui/Badge';
 import ColorDot from '../ui/ColorDot';
 import Button from '../ui/Button';
 import TaskStatusBadge from './TaskStatusBadge';
+import CategoryBadge from './CategoryBadge';
 import styles from './TaskCard.module.css';
 
 function fmtSeconds(sec) {
@@ -41,7 +42,9 @@ export default function TaskCard({ task, onEdit, onDelete, onStartTimer, onToggl
               </span>
             )}
             <Badge label={task.activity_type} type={task.activity_type} />
+            <CategoryBadge category={task.category} />
             <TaskStatusBadge status={task.status} />
+            {isOverdue && <Badge label="Overdue" type="cat_exam" />}
             {dueLabel && (
               <span className={[styles.due, isOverdue && styles.overdueDue].filter(Boolean).join(' ')}>
                 {isOverdue ? '⚠ ' : '📅 '}{dueLabel}

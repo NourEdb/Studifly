@@ -1,14 +1,6 @@
 import Button from '../ui/Button';
+import { fmtTime24 as fmt } from '../../utils/formatTime';
 import styles from './StudyBlockList.module.css';
-
-function fmt(timeStr) {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  const hour = parseInt(h, 10);
-  const ampm = hour >= 12 ? 'pm' : 'am';
-  const h12 = hour % 12 || 12;
-  return `${h12}:${m}${ampm}`;
-}
 
 function fmtDate(dateStr) {
   if (!dateStr) return '';

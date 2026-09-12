@@ -14,6 +14,7 @@ async function sendReminders() {
      FROM events e
      JOIN users u ON u.id = e.user_id
      WHERE e.reminder_sent = false
+       AND e.type != 'personal'
        AND e.event_date >= ?
        AND e.event_date <= ?
        AND u.email_reminders_enabled = true`,

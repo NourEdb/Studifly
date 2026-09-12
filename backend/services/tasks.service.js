@@ -54,11 +54,13 @@ async function getAll(userId, filters = {}) {
   return rows.map(r => ({ ...r, overdue: r.status !== 'completed' && r.due_date && r.due_date < now }));
 }
 
+const VALID_CATEGORIES = ['exam', 'homework', 'project', 'other'];
+
 async function create(userId, body) {
-  const { name, course_id, activity_type, planned_time, due_date, status } = body;
+  const { name, course_id, activity_type, planned_time, due_date, status, category } = body;
   const task = await db.get(
-    'INSERT INTO tasks (user_id, course_id, name, activity_type, planned_time, due_date, status) VALUES (?,?,?,?,?,?,?) RETURNING *',
-    [userId, course_id || null, name, activity_type, planned_time || 0, due_date || null, status || 'pending']
+    'INSERT INTO tasks (user_id, course_id, name, activity_type, planned_time, due_date, status, category) VALUES (?,?,?,?,?,?,?,?) RETURNING *',
+    [userId, course_id || null, name, activity_type, planned_time || 0, due_date || null, status || 'pending', VALID_CATEGORIES.includes(category) ? category : 'other']
   );
   return getOne(userId, task.id);
 }
@@ -75,6 +77,7 @@ async function update(userId, id, body) {
   if (body.activity_type !== undefined) { fields.push('activity_type = ?'); params.push(body.activity_type); }
   if (body.planned_time !== undefined) { fields.push('planned_time = ?'); params.push(body.planned_time); }
   if ('due_date' in body) { fields.push('due_date = ?'); params.push(body.due_date || null); }
+  if (body.category !== undefined) { fields.push('category = ?'); params.push(VALID_CATEGORIES.includes(body.category) ? body.category : 'other'); }
 
   if (fields.length) {
     params.push(id);

@@ -1,6 +1,6 @@
 const db = require('../database/db');
 
-const BUILT_IN_TYPES = ['exam', 'deadline', 'meeting', 'reminder', 'work', 'other'];
+const BUILT_IN_TYPES = ['exam', 'deadline', 'meeting', 'reminder', 'work', 'personal', 'other'];
 
 async function getCustomTypes(userId) {
   const placeholders = BUILT_IN_TYPES.map(() => '?').join(', ');

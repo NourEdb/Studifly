@@ -11,11 +11,16 @@ router.get('/', ctrl.getAll);
 router.post('/',
   body('name').trim().notEmpty(),
   body('activity_type').trim().notEmpty(),
+  body('category').optional({ nullable: true }).isIn(['exam', 'homework', 'project', 'other']),
   validate,
   ctrl.create
 );
 router.get('/:id', ctrl.getOne);
-router.put('/:id', ctrl.update);
+router.put('/:id',
+  body('category').optional({ nullable: true }).isIn(['exam', 'homework', 'project', 'other']),
+  validate,
+  ctrl.update
+);
 router.patch('/:id/status',
   body('status').isIn(['pending', 'in_progress', 'completed']),
   validate,

@@ -6,6 +6,7 @@ const TYPE_COLORS = {
   meeting:  '#4A9FE0',
   reminder: '#34C68A',
   work:     '#A259FF',
+  personal: '#9AA0AE',
   other:    '#7B7A99',
 };
 

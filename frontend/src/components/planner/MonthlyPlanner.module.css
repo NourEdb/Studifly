@@ -1,0 +1,180 @@
+.wrap { display: flex; flex-direction: column; gap: 16px; }
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.controls { display: flex; align-items: center; gap: 12px; }
+
+.filterSelect {
+  padding: 6px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  outline: none;
+}
+.filterSelect:focus { border-color: var(--color-purple); }
+
+.personalToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.personalToggle input { accent-color: var(--color-purple); cursor: pointer; }
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.weekdayLabel {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding-bottom: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  min-height: 92px;
+  padding: 6px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cell:hover { border-color: var(--color-purple); }
+.cell.outside { opacity: 0.45; }
+.cell.today { border-color: var(--color-purple); }
+.cell.today .dayNum { color: var(--color-purple); font-weight: 700; }
+.cell.selected { background: var(--color-purple-tint); border-color: var(--color-purple); }
+
+.dayNum { font-size: 0.8125rem; font-weight: 600; color: var(--color-text); }
+
+.chips { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--chip-color) 14%, transparent);
+  border-radius: 3px;
+  padding: 1px 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+}
+.chipDot { width: 6px; height: 6px; border-radius: 50%; background: var(--chip-color); flex-shrink: 0; }
+.chipLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.moreLabel { font-size: 0.65rem; color: var(--color-text-muted); padding-left: 2px; }
+
+.dayDetail {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.dayDetailHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 12px;
+}
+.dayDetailTitle { font-size: 0.9375rem; font-weight: 700; margin: 0; }
+
+.addEventBtn {
+  background: none;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-purple);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.addEventBtn:hover { border-color: var(--color-purple); background: var(--color-purple-tint); }
+
+.emptyText { color: var(--color-text-muted); font-size: 0.875rem; }
+
+.dayDetailList { display: flex; flex-direction: column; gap: 4px; }
+
+.detailRow { display: flex; align-items: center; gap: 4px; }
+
+.detailMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+.detailMain:hover { background: var(--color-purple-tint); }
+
+.detailDot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.detailName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.detailTime { font-size: 0.78rem; color: var(--color-text-muted); flex-shrink: 0; }
+
+.detailDelete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 6px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+}
+.detailDelete:hover { color: var(--color-error); background: var(--color-error-tint); }
+
+/* Mobile: compact grid — dots only, no text label; the day-detail list below
+   the grid becomes the primary way to see a day's full contents. */
+@media (max-width: 640px) {
+  .cell { min-height: 52px; padding: 4px; gap: 2px; }
+  .chipLabel { display: none; }
+  .chip { padding: 0; background: none; justify-content: center; }
+  .chips { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 3px; }
+  .moreLabel { display: none; }
+  .weekdayLabel { font-size: 0.65rem; }
+}

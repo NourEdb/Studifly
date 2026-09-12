@@ -10,6 +10,7 @@ import useStudyBlocks from '../hooks/useStudyBlocks';
 import useTimer from '../hooks/useTimer';
 import { deleteSession, reflectSession } from '../api/sessions.api';
 import { describeSession } from '../utils/subtaskSelection';
+import { fmtTime24 } from '../utils/formatTime';
 import styles from './TrackerPage.module.css';
 
 function fmtDuration(seconds) {
@@ -20,8 +21,7 @@ function fmtDuration(seconds) {
 }
 
 function fmtTime(iso) {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return iso ? fmtTime24(iso) : '—';
 }
 
 function fmtDate(iso) {
