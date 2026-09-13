@@ -34,6 +34,25 @@ function currentISOWeek() {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
+// The Sun–Sat week immediately BEFORE the current one. Used for anything that
+// reports on "last week" (e.g. the weekly review email, which is sent right at
+// the start of the new week and needs to summarize the week that just ended —
+// currentISOWeek() at that moment would return the brand-new, still-empty week).
+function previousISOWeek() {
+  const now = new Date();
+  const oneWeekAgo = new Date(now);
+  oneWeekAgo.setUTCDate(now.getUTCDate() - 7);
+
+  const year = oneWeekAgo.getUTCFullYear();
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const jan1Day = jan1.getUTCDay();
+  const weekOneSunday = new Date(jan1);
+  weekOneSunday.setUTCDate(jan1.getUTCDate() - jan1Day);
+  const diff = oneWeekAgo - weekOneSunday;
+  const week = Math.floor(diff / (7 * 24 * 3600 * 1000)) + 1;
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
 // Returns a YYYY-MM-DD date string in UTC, offset by the given number of days
 function dateStrUTC(offsetDays = 0) {
   const d = new Date();
@@ -44,4 +63,4 @@ function dateStrUTC(offsetDays = 0) {
   return `${y}-${m}-${day}`;
 }
 
-module.exports = { getISOWeekBounds, currentISOWeek, dateStrUTC };
+module.exports = { getISOWeekBounds, currentISOWeek, previousISOWeek, dateStrUTC };

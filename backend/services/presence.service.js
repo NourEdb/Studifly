@@ -30,11 +30,23 @@ async function emitToBuddies(userId, event, payload) {
  * Use this for routine study-session start/stop broadcasts. For an explicit
  * one-off correction (e.g. right when the Settings toggle itself is flipped),
  * call emitToBuddies directly so the message isn't swallowed by this same check.
+ *
+ * `taskId` (only meaningful on 'buddy_started_studying') is looked up against
+ * the user's CURRENT share_studying_activity value at emit time — so flipping
+ * that setting off takes effect on the very next session start, with no need
+ * to correct anything already sent over the socket.
  */
-async function emitPresenceEvent(userId, username, event) {
-  const user = await db.get('SELECT appear_offline FROM users WHERE id = ?', [userId]);
+async function emitPresenceEvent(userId, username, event, { taskId } = {}) {
+  const user = await db.get('SELECT appear_offline, share_studying_activity FROM users WHERE id = ?', [userId]);
   if (user?.appear_offline) return;
-  return emitToBuddies(userId, event, { userId, username });
+
+  const payload = { userId, username };
+  if (event === 'buddy_started_studying' && user?.share_studying_activity && taskId) {
+    const task = await db.get('SELECT name FROM tasks WHERE id = ?', [taskId]);
+    if (task) payload.label = task.name;
+  }
+
+  return emitToBuddies(userId, event, payload);
 }
 
 /** Emit an event to a single user's room. */

@@ -36,7 +36,15 @@ async function sendReminders() {
       sent++;
       console.log(`[reminder-job] ✓ Sent and marked — id=${event.id} "${event.title}" → ${event.email}`);
     } catch (err) {
-      console.error(`[reminder-job] ✗ Failed — id=${event.id} "${event.title}": ${err.message}`);
+      // Log the nodemailer diagnostic fields (not just message) — an auth or
+      // quota failure here would otherwise look identical to "nothing to send"
+      // in the logs, which is exactly what made this silent last time.
+      console.error(
+        `[reminder-job] ✗ Failed — id=${event.id} "${event.title}": ${err.message}` +
+        (err.code ? ` | code=${err.code}` : '') +
+        (err.responseCode ? ` | responseCode=${err.responseCode}` : '') +
+        (err.response ? ` | response=${err.response}` : '')
+      );
     }
   }
 

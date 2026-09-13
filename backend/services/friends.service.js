@@ -6,7 +6,9 @@ function err(status, message) {
   return e;
 }
 
-// GET /api/friends — accepted friends with live "is studying" flag
+// GET /api/friends — accepted friends with live "is studying" flag, plus a
+// "what they're studying" label that's only ever populated when the friend
+// has opted in via share_studying_activity (default OFF — see 026_share_studying_activity.sql).
 async function getFriends(userId) {
   return db.all(
     `SELECT
@@ -18,19 +20,30 @@ async function getFriends(userId) {
        -- open and started within the last 12 hours — a session abandoned by a
        -- closed tab or a logout that never called stop() shouldn't mark them
        -- as studying forever. Mirrors sessions.service.js's hasActiveSession().
-       CASE WHEN u.appear_offline THEN false ELSE COALESCE((
-         SELECT end_time IS NULL AND start_time >= NOW() - INTERVAL '12 hours'
-         FROM study_sessions
-         WHERE user_id = u.id
-         ORDER BY start_time DESC
-         LIMIT 1
-       ), false) END   AS is_studying,
+       CASE WHEN u.appear_offline THEN false
+            ELSE COALESCE(latest.is_studying, false) END AS is_studying,
+       -- The subject label rides on the same "is it actually active" check as
+       -- is_studying above, so it can never show a stale/finished session's
+       -- task — and it's gated on the friend's own opt-in, not the viewer's.
+       CASE WHEN u.appear_offline OR NOT u.share_studying_activity THEN NULL
+            WHEN latest.is_studying THEN latest.studying_label
+            ELSE NULL END AS studying_label,
        f.created_at
      FROM friendships f
      JOIN users u ON u.id = CASE
        WHEN f.requester_id = ? THEN f.addressee_id
        ELSE f.requester_id
      END
+     LEFT JOIN LATERAL (
+       SELECT
+         (s.end_time IS NULL AND s.start_time >= NOW() - INTERVAL '12 hours') AS is_studying,
+         t.name AS studying_label
+       FROM study_sessions s
+       LEFT JOIN tasks t ON t.id = s.task_id
+       WHERE s.user_id = u.id
+       ORDER BY s.start_time DESC
+       LIMIT 1
+     ) latest ON true
      WHERE (f.requester_id = ? OR f.addressee_id = ?)
        AND f.status = 'accepted'
      ORDER BY u.username`,

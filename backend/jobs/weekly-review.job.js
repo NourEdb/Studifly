@@ -14,7 +14,12 @@ function startWeeklyReviewJob() {
   cron.schedule('0 8 * * 0', () => {
     console.log('[weekly-review-job] Running — sending weekly reviews...');
     sendWeeklyReviewToAll().catch(err =>
-      console.error('[weekly-review-job] Unexpected error:', err.message)
+      console.error(
+        '[weekly-review-job] Unexpected error:', err.message,
+        err.code ? `| code=${err.code}` : '',
+        err.responseCode ? `| responseCode=${err.responseCode}` : '',
+        err.response ? `| response=${err.response}` : ''
+      )
     );
   }, { timezone: 'UTC' });
 

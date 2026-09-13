@@ -1,7 +1,7 @@
 const Groq = require('groq-sdk');
 const nodemailer = require('nodemailer');
 const db = require('../database/db');
-const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
+const { previousISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
@@ -14,7 +14,9 @@ function createTransporter() {
 }
 
 async function getWeeklyStats(userId) {
-  const { start, end } = getISOWeekBounds(currentISOWeek());
+  // "Last week", not the current one — this runs right as the new week begins,
+  // and needs to summarize the week that just ended (see previousISOWeek()).
+  const { start, end } = getISOWeekBounds(previousISOWeek());
 
   const [hoursRow, sessionRow, tasksRow, courseRow, userRow] = await Promise.all([
     db.get(
@@ -231,7 +233,9 @@ async function sendWeeklyReviewToUser(userId) {
 }
 
 async function sendWeeklyReviewToAll() {
-  const { start, end } = getISOWeekBounds(currentISOWeek());
+  // Same week window as getWeeklyStats() — must match, or this will pick users
+  // who studied last week and then generate stats for a different window.
+  const { start, end } = getISOWeekBounds(previousISOWeek());
 
   const users = await db.all(
     `SELECT DISTINCT u.id
@@ -249,7 +253,15 @@ async function sendWeeklyReviewToAll() {
       await sendWeeklyReviewToUser(user.id);
       sent++;
     } catch (err) {
-      console.error(`[weekly-review] Failed for user ${user.id}: ${err.message}`);
+      // err.message alone hides *why* an SMTP send failed (bad auth, quota,
+      // rejected recipient, etc.) — log the nodemailer diagnostic fields too
+      // so a future silent-delivery report is actually debuggable from logs.
+      console.error(
+        `[weekly-review] Failed for user ${user.id}: ${err.message}` +
+        (err.code ? ` | code=${err.code}` : '') +
+        (err.responseCode ? ` | responseCode=${err.responseCode}` : '') +
+        (err.response ? ` | response=${err.response}` : '')
+      );
     }
   }
 

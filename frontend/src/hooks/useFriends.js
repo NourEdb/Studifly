@@ -28,16 +28,19 @@ export default function useFriends() {
   useEffect(() => {
     if (!socket) return;
 
-    function onBuddyStarted({ userId, username }) {
+    function onBuddyStarted({ userId, username, label }) {
       setFriends(prev =>
-        prev.map(f => f.id === userId ? { ...f, is_studying: true } : f)
+        // `label` is only ever present when that friend has opted in (see
+        // presence.service.js) — absent/undefined just means "studying now"
+        // with no subject, same as a friend who never opted in at all.
+        prev.map(f => f.id === userId ? { ...f, is_studying: true, studying_label: label ?? null } : f)
       );
       toast(`🟢 ${username} started studying!`, { duration: 4000 });
     }
 
     function onBuddyStopped({ userId }) {
       setFriends(prev =>
-        prev.map(f => f.id === userId ? { ...f, is_studying: false } : f)
+        prev.map(f => f.id === userId ? { ...f, is_studying: false, studying_label: null } : f)
       );
     }
 

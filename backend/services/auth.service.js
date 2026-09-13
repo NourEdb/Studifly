@@ -41,7 +41,7 @@ async function login({ username, password }) {
 
 async function getMe(userId) {
   return db.get(
-    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, appear_offline, pinned_badge, created_at FROM users WHERE id = ?',
+    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, appear_offline, share_studying_activity, pinned_badge, created_at FROM users WHERE id = ?',
     [userId]
   );
 }
@@ -56,6 +56,7 @@ async function updateMe(userId, body) {
   if ('weekly_goal_hours' in body)                { fields.push('weekly_goal_hours = ?');       params.push(parseInt(body.weekly_goal_hours, 10) || 10); }
   if ('email_reminders_enabled' in body)          { fields.push('email_reminders_enabled = ?'); params.push(!!body.email_reminders_enabled); }
   if ('appear_offline' in body)                   { fields.push('appear_offline = ?');          params.push(!!body.appear_offline); }
+  if ('share_studying_activity' in body)          { fields.push('share_studying_activity = ?'); params.push(!!body.share_studying_activity); }
 
   if ('pinned_badge' in body) {
     if (body.pinned_badge) {

@@ -1,8 +1,8 @@
 const svc      = require('../services/sessions.service');
 const presence = require('../services/presence.service');
 
-function notifyBuddies(userId, username, event) {
-  presence.emitPresenceEvent(userId, username, event)
+function notifyBuddies(userId, username, event, extra) {
+  presence.emitPresenceEvent(userId, username, event, extra)
     .catch(err => console.error(`[presence] ${event} emit failed:`, err.message));
 }
 
@@ -10,7 +10,7 @@ const startSession = async (req, res, next) => {
   try {
     const session = await svc.start(req.user.id, req.body);
     res.status(201).json(session);
-    notifyBuddies(req.user.id, req.user.username, 'buddy_started_studying');
+    notifyBuddies(req.user.id, req.user.username, 'buddy_started_studying', { taskId: session.task_id });
   } catch (e) { next(e); }
 };
 
