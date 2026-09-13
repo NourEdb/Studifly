@@ -7,3 +7,4 @@ export const sendRequest   = (userId) => client.post(`/friends/request/${userId}
 export const acceptRequest = (id)     => client.patch(`/friends/${id}/accept`).then(r => r.data);
 export const rejectRequest = (id)     => client.patch(`/friends/${id}/reject`).then(r => r.data);
 export const removeFriend  = (id)     => client.delete(`/friends/${id}`).then(r => r.data);
+export const sendStudyInvite = (userId) => client.post(`/friends/study-invite/${userId}`).then(r => r.data);

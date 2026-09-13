@@ -6,6 +6,17 @@ const { sendPasswordResetEmail } = require('./email.service');
 const presence = require('./presence.service');
 const sessions = require('./sessions.service');
 
+// Simple well-formed-URL check for the "study call link" setting — no OAuth,
+// no Zoom/Google API, just a plain saved link, so all we validate is that
+// it's actually a link and that it's https (never send friends to plain http).
+function isValidMeetingLink(str) {
+  try {
+    return new URL(str).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function sha256(str) {
   return crypto.createHash('sha256').update(str).digest('hex');
 }
@@ -41,7 +52,7 @@ async function login({ username, password }) {
 
 async function getMe(userId) {
   return db.get(
-    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, appear_offline, share_studying_activity, pinned_badge, created_at FROM users WHERE id = ?',
+    'SELECT id, username, email, display_name, weekly_goal_hours, email_reminders_enabled, appear_offline, share_studying_activity, meeting_link, pinned_badge, created_at FROM users WHERE id = ?',
     [userId]
   );
 }
@@ -57,6 +68,22 @@ async function updateMe(userId, body) {
   if ('email_reminders_enabled' in body)          { fields.push('email_reminders_enabled = ?'); params.push(!!body.email_reminders_enabled); }
   if ('appear_offline' in body)                   { fields.push('appear_offline = ?');          params.push(!!body.appear_offline); }
   if ('share_studying_activity' in body)          { fields.push('share_studying_activity = ?'); params.push(!!body.share_studying_activity); }
+
+  if ('meeting_link' in body) {
+    const link = (body.meeting_link || '').trim();
+    if (!link) {
+      // Empty/null clears the saved link — that's how a user removes it.
+      fields.push('meeting_link = ?');
+      params.push(null);
+    } else if (!isValidMeetingLink(link)) {
+      const err = new Error('Meeting link must be a valid https:// URL');
+      err.status = 400;
+      throw err;
+    } else {
+      fields.push('meeting_link = ?');
+      params.push(link);
+    }
+  }
 
   if ('pinned_badge' in body) {
     if (body.pinned_badge) {

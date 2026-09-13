@@ -1,7 +1,39 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, createElement } from 'react';
 import toast from 'react-hot-toast';
 import * as api from '../api/friends.api';
 import { useSocket } from '../context/SocketContext';
+
+// This file is plain .js (no JSX), so the invite toast's clickable "Join"
+// button is built with createElement instead — same visual result as JSX,
+// just without the transform. Nothing auto-opens; the recipient must click.
+function renderStudyInviteToast(fromUsername, meetingLink, t) {
+  return createElement(
+    'span',
+    { style: { display: 'flex', alignItems: 'center', gap: '10px' } },
+    createElement('span', null, `🎥 ${fromUsername} wants to study together!`),
+    createElement(
+      'button',
+      {
+        onClick: () => {
+          window.open(meetingLink, '_blank', 'noopener,noreferrer');
+          toast.dismiss(t.id);
+        },
+        style: {
+          background: 'var(--color-purple)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '6px',
+          padding: '4px 12px',
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        },
+      },
+      'Join'
+    )
+  );
+}
 
 export default function useFriends() {
   const socket = useSocket();
@@ -53,6 +85,23 @@ export default function useFriends() {
     };
   }, [socket]);
 
+  // Real-time "Study Together" invites — nothing persisted, purely a live
+  // nudge (see friends.controller.js), so it's a toast with a Join action,
+  // not an entry in NotificationBell (which only re-fetches persisted data).
+  useEffect(() => {
+    if (!socket) return;
+
+    function onStudyInvite({ fromUsername, meetingLink }) {
+      toast(
+        (t) => renderStudyInviteToast(fromUsername, meetingLink, t),
+        { duration: 20000 }
+      );
+    }
+
+    socket.on('study_invite', onStudyInvite);
+    return () => socket.off('study_invite', onStudyInvite);
+  }, [socket]);
+
   async function accept(friendshipId) {
     try {
       await api.acceptRequest(friendshipId);
@@ -86,5 +135,14 @@ export default function useFriends() {
     toast.success('Friend request sent!');
   }
 
-  return { friends, requests, loading, refresh: load, accept, reject, remove, sendRequest };
+  async function sendStudyInvite(userId, username) {
+    try {
+      await api.sendStudyInvite(userId);
+      toast.success(`Invite sent to ${username}!`);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to send invite');
+    }
+  }
+
+  return { friends, requests, loading, refresh: load, accept, reject, remove, sendRequest, sendStudyInvite };
 }

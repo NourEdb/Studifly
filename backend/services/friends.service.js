@@ -165,4 +165,27 @@ async function removeFriend(userId, friendshipId) {
   await db.run('DELETE FROM friendships WHERE id = ?', [friendshipId]);
 }
 
-module.exports = { getFriends, getRequests, searchUsers, sendRequest, acceptRequest, rejectRequest, removeFriend };
+// POST /api/friends/study-invite/:userId — "Study Together": relayed over the
+// socket by the controller, not stored anywhere (it's a one-off nudge, not a
+// notification with a backing row like a friend request). The frontend
+// already disables the button when the sender has no meeting_link, but this
+// check is repeated here since a client-side disabled button is only a UX
+// hint, not enforcement.
+async function sendStudyInvite(fromUserId, toUserId) {
+  if (fromUserId === toUserId) throw err(400, 'Cannot invite yourself');
+
+  const friendship = await db.get(
+    `SELECT 1 FROM friendships
+     WHERE status = 'accepted'
+       AND ((requester_id = ? AND addressee_id = ?) OR (requester_id = ? AND addressee_id = ?))`,
+    [fromUserId, toUserId, toUserId, fromUserId]
+  );
+  if (!friendship) throw err(403, 'You can only invite accepted friends');
+
+  const fromUser = await db.get('SELECT username, meeting_link FROM users WHERE id = ?', [fromUserId]);
+  if (!fromUser.meeting_link) throw err(400, 'Add your study call link in Settings first');
+
+  return { fromUsername: fromUser.username, meetingLink: fromUser.meeting_link };
+}
+
+module.exports = { getFriends, getRequests, searchUsers, sendRequest, acceptRequest, rejectRequest, removeFriend, sendStudyInvite };

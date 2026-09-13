@@ -20,11 +20,13 @@ export default function SettingsPage() {
   const [weeklyGoalHours, setWeeklyGoalHours] = useState(user?.weekly_goal_hours ?? 10);
   const [remindersEnabled, setRemindersEnabled] = useState(user?.email_reminders_enabled ?? true);
   const [appearOffline, setAppearOffline]       = useState(user?.appear_offline ?? false);
+  const [meetingLink, setMeetingLink]           = useState(user?.meeting_link || '');
 
   const [profileMsg, setProfileMsg] = useState(null);
   const [goalMsg, setGoalMsg]       = useState(null);
   const [notifMsg, setNotifMsg]     = useState(null);
   const [privacyMsg, setPrivacyMsg] = useState(null);
+  const [meetingLinkMsg, setMeetingLinkMsg] = useState(null);
 
   const [currentPw, setCurrentPw]   = useState('');
   const [newPw, setNewPw]           = useState('');
@@ -92,6 +94,29 @@ export default function SettingsPage() {
     } catch (err) {
       setAppearOffline(!newVal);
       setPrivacyMsg({ ok: false, text: 'Failed to update privacy setting.' });
+    }
+  }
+
+  // Same rule the backend enforces (auth.service.js's isValidMeetingLink) —
+  // checked here too so the user gets instant feedback instead of a round trip.
+  function isValidMeetingLink(str) {
+    try { return new URL(str).protocol === 'https:'; }
+    catch { return false; }
+  }
+
+  async function saveMeetingLink(e) {
+    e.preventDefault();
+    const link = meetingLink.trim();
+    if (link && !isValidMeetingLink(link)) {
+      setMeetingLinkMsg({ ok: false, text: 'Enter a valid https:// URL (e.g. your Zoom or Google Meet link).' });
+      return;
+    }
+    try {
+      await updateMe({ meeting_link: link });
+      await refreshUser();
+      setMeetingLinkMsg({ ok: true, text: link ? 'Study call link saved.' : 'Study call link removed.' });
+    } catch (err) {
+      setMeetingLinkMsg({ ok: false, text: err.response?.data?.error || 'Failed to save study call link.' });
     }
   }
 
@@ -230,6 +255,29 @@ export default function SettingsPage() {
           </label>
         </div>
         {privacyMsg && <p className={privacyMsg.ok ? styles.ok : styles.err}>{privacyMsg.text}</p>}
+      </Card>
+
+      {/* Study Together */}
+      <Card className={styles.section}>
+        <h2 className={styles.sectionTitle}>Study Together</h2>
+        <form onSubmit={saveMeetingLink} className={styles.form}>
+          <label className={styles.label}>
+            My study call link
+            <input
+              className={styles.input}
+              type="url"
+              value={meetingLink}
+              onChange={e => setMeetingLink(e.target.value)}
+              placeholder="https://zoom.us/my/yourname or https://meet.google.com/xxx-xxxx-xxx"
+            />
+          </label>
+          <p className={styles.hint}>
+            Paste your Zoom Personal Meeting link or Google Meet link — friends can use this to
+            join you when you invite them to "Study Together". Leave blank to disable invites.
+          </p>
+          {meetingLinkMsg && <p className={meetingLinkMsg.ok ? styles.ok : styles.err}>{meetingLinkMsg.text}</p>}
+          <button type="submit" className={styles.btn}>Save link</button>
+        </form>
       </Card>
 
       {/* Weekly Review */}

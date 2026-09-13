@@ -204,7 +204,8 @@
 .btnAdd,
 .btnAccept,
 .btnDecline,
-.btnRemove {
+.btnRemove,
+.btnStudyTogether {
   padding: 5px 14px;
   border-radius: 999px;
   font-size: 0.78rem;
@@ -212,6 +213,19 @@
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s;
   white-space: nowrap;
+}
+
+.btnStudyTogether {
+  background: var(--color-purple);
+  border: 1.5px solid var(--color-purple);
+  color: #fff;
+}
+.btnStudyTogether:hover:not(:disabled) { opacity: 0.85; }
+.btnStudyTogether:disabled {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
 }
 
 .btnAdd {

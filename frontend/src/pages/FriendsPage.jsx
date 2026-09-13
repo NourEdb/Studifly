@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import useFriends from '../hooks/useFriends';
 import useStudyGroups from '../hooks/useStudyGroups';
+import { useAuth } from '../context/AuthContext';
 import { searchUsers } from '../api/friends.api';
 import styles from './FriendsPage.module.css';
 
@@ -26,7 +27,8 @@ function PersonName({ username, display_name }) {
 }
 
 export default function FriendsPage() {
-  const { friends, requests, loading, accept, reject, remove, sendRequest } = useFriends();
+  const { friends, requests, loading, accept, reject, remove, sendRequest, sendStudyInvite } = useFriends();
+  const { user } = useAuth();
   const {
     groups, loading: groupsLoading,
     leaderboards, leaderboardLoading,
@@ -284,6 +286,16 @@ export default function FriendsPage() {
                     <span className={styles.studyingLabel}>studying now</span>
                   )}
                 </div>
+                <button
+                  className={styles.btnStudyTogether}
+                  onClick={() => sendStudyInvite(f.id, f.username)}
+                  disabled={!user?.meeting_link}
+                  title={user?.meeting_link
+                    ? `Invite ${f.username} to study together`
+                    : 'Add your study call link in Settings first'}
+                >
+                  🎥 Study Together
+                </button>
                 <button
                   className={styles.btnRemove}
                   onClick={() => remove(f.friendship_id)}

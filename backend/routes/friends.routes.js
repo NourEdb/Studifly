@@ -8,6 +8,7 @@ router.get('/',                   ctrl.getFriends);
 router.get('/requests',           ctrl.getRequests);
 router.get('/search',             ctrl.searchUsers);
 router.post('/request/:userId',   ctrl.sendRequest);
+router.post('/study-invite/:userId', ctrl.sendStudyInvite);
 router.patch('/:id/accept',       ctrl.acceptRequest);
 router.patch('/:id/reject',       ctrl.rejectRequest);
 router.delete('/:id',             ctrl.removeFriend);
