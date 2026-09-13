@@ -56,6 +56,17 @@ export default function useFriends() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Real-time: a new incoming friend request — refresh so this page's own
+  // "Friend requests" card updates immediately too, matching NotificationBell's
+  // existing behavior (both listen on the same socket for the same event; the
+  // bell already reacted live, this hook just never picked it up before).
+  useEffect(() => {
+    if (!socket) return;
+    function onFriendRequestReceived() { load(); }
+    socket.on('friend_request_received', onFriendRequestReceived);
+    return () => socket.off('friend_request_received', onFriendRequestReceived);
+  }, [socket, load]);
+
   // Real-time presence — update dots when a buddy starts or stops studying
   useEffect(() => {
     if (!socket) return;
