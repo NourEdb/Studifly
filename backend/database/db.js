@@ -34,6 +34,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/024_task_category.sql'),
   path.join(__dirname, 'migrations/025_task_sort_order.sql'),
   path.join(__dirname, 'migrations/026_share_studying_activity.sql'),
+  path.join(__dirname, 'migrations/027_study_groups.sql'),
 ];
 
 async function initDb() {

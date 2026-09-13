@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import Card from '../components/ui/Card';
 import useFriends from '../hooks/useFriends';
+import useStudyGroups from '../hooks/useStudyGroups';
 import { searchUsers } from '../api/friends.api';
 import styles from './FriendsPage.module.css';
 
@@ -26,10 +27,22 @@ function PersonName({ username, display_name }) {
 
 export default function FriendsPage() {
   const { friends, requests, loading, accept, reject, remove, sendRequest } = useFriends();
+  const {
+    groups, loading: groupsLoading,
+    leaderboards, leaderboardLoading,
+    loadLeaderboard, createGroup, leaveGroup, deleteGroup, addMember, removeMember,
+  } = useStudyGroups();
 
   const [query, setQuery]         = useState('');
   const [results, setResults]     = useState([]);
   const [searching, setSearching] = useState(false);
+
+  const [groupFormOpen, setGroupFormOpen]         = useState(false);
+  const [groupName, setGroupName]                 = useState('');
+  const [selectedFriendIds, setSelectedFriendIds] = useState([]);
+  const [creatingGroup, setCreatingGroup]         = useState(false);
+  const [expandedGroupId, setExpandedGroupId]     = useState(null);
+  const [addMemberChoice, setAddMemberChoice]     = useState({}); // { [groupId]: userId }
 
   // Debounced search — fires 350 ms after the user stops typing
   useEffect(() => {
@@ -79,6 +92,51 @@ export default function FriendsPage() {
           : r
       )
     );
+  }
+
+  function toggleFriendSelection(friendId) {
+    setSelectedFriendIds(prev =>
+      prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]
+    );
+  }
+
+  async function handleCreateGroup(e) {
+    e.preventDefault();
+    if (!groupName.trim()) return;
+    setCreatingGroup(true);
+    const ok = await createGroup(groupName.trim(), selectedFriendIds);
+    setCreatingGroup(false);
+    if (ok) {
+      setGroupName('');
+      setSelectedFriendIds([]);
+      setGroupFormOpen(false);
+    }
+  }
+
+  function cancelCreateGroup() {
+    setGroupFormOpen(false);
+    setGroupName('');
+    setSelectedFriendIds([]);
+  }
+
+  async function toggleExpandGroup(groupId) {
+    const opening = expandedGroupId !== groupId;
+    setExpandedGroupId(opening ? groupId : null);
+    if (opening && !leaderboards[groupId]) {
+      await loadLeaderboard(groupId);
+    }
+  }
+
+  async function handleAddMember(groupId) {
+    const userId = addMemberChoice[groupId];
+    if (!userId) return;
+    await addMember(groupId, parseInt(userId, 10));
+    setAddMemberChoice(prev => ({ ...prev, [groupId]: '' }));
+  }
+
+  function handleDeleteGroup(groupId) {
+    if (!confirm('Delete this group for all members?')) return;
+    deleteGroup(groupId);
   }
 
   function renderSearchAction(result) {
@@ -235,6 +293,157 @@ export default function FriendsPage() {
                 </button>
               </div>
             ))}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Study groups ─────────────────────────────────────── */}
+      <Card className={styles.section}>
+        <h2 className={styles.sectionTitle}>
+          Study groups
+          {groups.length > 0 && (
+            <span className={styles.countBadge}>{groups.length}</span>
+          )}
+        </h2>
+
+        {!groupFormOpen ? (
+          <button
+            className={styles.btnAdd}
+            onClick={() => setGroupFormOpen(true)}
+            disabled={friends.length === 0}
+            title={friends.length === 0 ? 'Add friends first to create a group' : undefined}
+          >
+            + Create group
+          </button>
+        ) : (
+          <form onSubmit={handleCreateGroup} className={styles.groupForm}>
+            <input
+              className={styles.searchInput}
+              type="text"
+              placeholder="Group name…"
+              value={groupName}
+              onChange={e => setGroupName(e.target.value)}
+              maxLength={50}
+              autoFocus
+            />
+            <p className={styles.groupFormHint}>Pick friends to add:</p>
+            <div className={styles.checkboxList}>
+              {friends.map(f => (
+                <label key={f.id} className={styles.checkboxRow}>
+                  <input
+                    type="checkbox"
+                    checked={selectedFriendIds.includes(f.id)}
+                    onChange={() => toggleFriendSelection(f.id)}
+                  />
+                  <Avatar name={f.username} />
+                  <PersonName username={f.username} display_name={f.display_name} />
+                </label>
+              ))}
+            </div>
+            <div className={styles.groupFormActions}>
+              <button type="button" className={styles.btnDecline} onClick={cancelCreateGroup}>
+                Cancel
+              </button>
+              <button type="submit" className={styles.btnAccept} disabled={creatingGroup || !groupName.trim()}>
+                {creatingGroup ? 'Creating…' : 'Create group'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {groupsLoading ? (
+          <p className={styles.emptyText}>Loading…</p>
+        ) : groups.length === 0 ? (
+          <p className={styles.emptyText}>
+            No study groups yet — create one from your friends above.
+          </p>
+        ) : (
+          <div className={styles.list}>
+            {groups.map(g => {
+              const isExpanded = expandedGroupId === g.id;
+              const board = leaderboards[g.id];
+              const memberIdsInGroup = board ? board.map(row => row.user_id) : [];
+              const addableFriends = friends.filter(f => !memberIdsInGroup.includes(f.id));
+
+              return (
+                <div key={g.id} className={styles.groupCard}>
+                  <div className={styles.groupHeader} onClick={() => toggleExpandGroup(g.id)}>
+                    <div className={styles.groupHeaderInfo}>
+                      <span className={styles.groupName}>{g.name}</span>
+                      <span className={styles.groupMeta}>
+                        {g.member_count} member{g.member_count !== 1 ? 's' : ''}
+                        {g.is_creator && ' · you created this'}
+                      </span>
+                    </div>
+                    <span className={styles.groupChevron}>{isExpanded ? '▲' : '▼'}</span>
+                  </div>
+
+                  {isExpanded && (
+                    <div className={styles.groupBody}>
+                      {leaderboardLoading[g.id] ? (
+                        <p className={styles.emptyText}>Loading leaderboard…</p>
+                      ) : (
+                        <>
+                          <p className={styles.leaderboardCaption}>This week's study hours</p>
+                          <div className={styles.leaderboardList}>
+                            {(board || []).map(row => (
+                              <div key={row.user_id} className={styles.leaderboardRow}>
+                                <span className={styles.leaderboardRank}>#{row.rank}</span>
+                                <Avatar name={row.username} />
+                                <PersonName username={row.username} display_name={row.display_name} />
+                                <span className={styles.leaderboardHours}>{row.total_hours}h</span>
+                                {g.is_creator && row.user_id !== g.created_by && (
+                                  <button
+                                    className={styles.btnRemove}
+                                    title="Remove from group"
+                                    onClick={() => removeMember(g.id, row.user_id)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {g.is_creator && addableFriends.length > 0 && (
+                            <div className={styles.addMemberRow}>
+                              <select
+                                className={styles.groupSelect}
+                                value={addMemberChoice[g.id] || ''}
+                                onChange={e => setAddMemberChoice(prev => ({ ...prev, [g.id]: e.target.value }))}
+                              >
+                                <option value="">Add a friend…</option>
+                                {addableFriends.map(f => (
+                                  <option key={f.id} value={f.id}>{f.display_name || f.username}</option>
+                                ))}
+                              </select>
+                              <button
+                                className={styles.btnAdd}
+                                disabled={!addMemberChoice[g.id]}
+                                onClick={() => handleAddMember(g.id)}
+                              >
+                                Add
+                              </button>
+                            </div>
+                          )}
+
+                          <div className={styles.groupFooterActions}>
+                            <button className={styles.btnLeaveGroup} onClick={() => leaveGroup(g.id)}>
+                              Leave group
+                            </button>
+                            {g.is_creator && (
+                              <button className={styles.btnDeleteGroup} onClick={() => handleDeleteGroup(g.id)}>
+                                Delete group
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </Card>

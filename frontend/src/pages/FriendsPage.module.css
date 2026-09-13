@@ -268,9 +268,200 @@
   background: var(--color-border);
 }
 
+/* ── Study groups: create form ─────────────────────────────── */
+.groupForm {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.groupFormHint {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  margin: 4px 0 0;
+}
+
+.checkboxList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 4px;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.checkboxRow:hover { background: var(--color-purple-tint); }
+.checkboxRow input[type="checkbox"] { flex-shrink: 0; accent-color: var(--color-purple); }
+
+.groupFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Study groups: list ─────────────────────────────────────── */
+.groupCard {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.groupHeader:hover { background: var(--color-purple-tint); }
+
+.groupHeaderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.groupName {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.groupMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.groupChevron {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.groupBody {
+  padding: 4px 14px 14px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.leaderboardCaption {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-purple);
+  margin: 10px 0 0;
+}
+
+.leaderboardList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.leaderboardRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+}
+.leaderboardRow:hover { background: var(--color-purple-tint); }
+.leaderboardRow:hover .btnRemove { opacity: 1; }
+.leaderboardRow .btnRemove { opacity: 0; }
+
+.leaderboardRank {
+  width: 24px;
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.leaderboardHours {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-purple);
+  flex-shrink: 0;
+}
+
+.addMemberRow {
+  display: flex;
+  gap: 8px;
+}
+
+.groupSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+
+.groupFooterActions {
+  display: flex;
+  gap: 8px;
+}
+
+.btnLeaveGroup {
+  align-self: flex-start;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-border);
+  color: var(--color-text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+.btnLeaveGroup:hover {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.btnDeleteGroup {
+  align-self: flex-start;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-error);
+  color: var(--color-error);
+  transition: background 0.15s, color 0.15s;
+}
+.btnDeleteGroup:hover {
+  background: var(--color-error);
+  color: #fff;
+}
+
 /* ── Mobile ─────────────────────────────────────────────────── */
 @media (max-width: 480px) {
   .section { padding: 16px; }
   .personRow { gap: 8px; }
   .studyingLabel { display: none; }
+  .leaderboardHours { font-size: 0.78rem; }
 }
