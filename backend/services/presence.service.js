@@ -2,6 +2,22 @@ const db       = require('../database/db');
 const { getIO } = require('../socket');
 
 /**
+ * io.to(room).emit(...) is fire-and-forget — if nobody is actually connected
+ * in that room, it silently no-ops with no error and no log, indistinguishable
+ * from a successful delivery. This wrapper logs that case explicitly so a
+ * "recipient didn't get it" report shows up in server logs instead of nothing
+ * (this is exactly what happened in production when the frontend's socket
+ * wasn't reaching this server at all — every emit looked identical to success).
+ */
+function emitToRoom(io, room, event, payload) {
+  const size = io.sockets.adapter.rooms.get(room)?.size || 0;
+  if (size === 0) {
+    console.warn(`[presence] emit "${event}" to ${room} — no connected sockets, message not delivered to anyone`);
+  }
+  io.to(room).emit(event, payload);
+}
+
+/**
  * Emit an event to every accepted friend of userId.
  * Fire-and-forget safe — caller should .catch() the returned promise.
  */
@@ -21,7 +37,7 @@ async function emitToBuddies(userId, event, payload) {
   );
 
   for (const { friend_id } of rows) {
-    io.to(`user:${friend_id}`).emit(event, payload);
+    emitToRoom(io, `user:${friend_id}`, event, payload);
   }
 }
 
@@ -53,7 +69,7 @@ async function emitPresenceEvent(userId, username, event, { taskId } = {}) {
 function emitToUser(userId, event, payload) {
   const io = getIO();
   if (!io) return;
-  io.to(`user:${userId}`).emit(event, payload);
+  emitToRoom(io, `user:${userId}`, event, payload);
 }
 
 module.exports = { emitToBuddies, emitPresenceEvent, emitToUser };

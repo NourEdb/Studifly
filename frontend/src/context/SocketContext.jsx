@@ -21,13 +21,21 @@ export function SocketProvider({ children }) {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    // Connect to the same origin; the Vite dev proxy forwards /socket.io → backend.
-    // In production a reverse-proxy does the same, so no extra env var is needed.
-    const s = io({
+    // VITE_SOCKET_URL points at the deployed backend (e.g. Render) — required in
+    // production since the frontend (Vercel) and backend are different origins,
+    // so there's no same-origin request for a server-side proxy to catch. Left
+    // unset locally: io() with no URL connects same-origin, and the Vite dev
+    // proxy (vite.config.js) forwards /socket.io → localhost:5000, same as before.
+    const socketUrl = import.meta.env.VITE_SOCKET_URL;
+    const socketOpts = {
       auth: { token },
-      // Allow fallback to polling if WS is unavailable (e.g. some firewalls)
-      transports: ['websocket', 'polling'],
-    });
+      // Polling first, then upgrade to websocket once the connection is
+      // confirmed live — more resilient than websocket-first against a
+      // cold-starting free-tier host (e.g. Render spinning back up), which a
+      // forced-first WS upgrade handles less gracefully than a plain HTTP request.
+      transports: ['polling', 'websocket'],
+    };
+    const s = socketUrl ? io(socketUrl, socketOpts) : io(socketOpts);
 
     s.on('connect',       ()  => console.log('[socket] connected:', s.id));
     s.on('disconnect',    (r) => console.log('[socket] disconnected:', r));
