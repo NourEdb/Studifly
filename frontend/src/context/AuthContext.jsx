@@ -19,9 +19,19 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  function loginUser(token, userData) {
+  // Always fetches the full profile via getMe() rather than trusting whatever
+  // shape the login/register REST response happens to hand back — that
+  // response is intentionally minimal ({ id, username, email }, see
+  // auth.service.js's login()) and was missing fields like meeting_link,
+  // display_name, and every other setting, leaving `user` under-populated
+  // until the next page refresh or a Settings save (which does call
+  // refreshUser()). This keeps `user` as a single consistent shape everywhere,
+  // from the moment of login, not just after a refresh.
+  async function loginUser(token) {
     localStorage.setItem('token', token);
-    setUser(userData);
+    const fullUser = await getMe();
+    setUser(fullUser);
+    return fullUser;
   }
 
   function logoutUser() {

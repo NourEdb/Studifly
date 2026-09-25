@@ -105,8 +105,16 @@ export default function FriendsPage() {
   // awaiting the API call risks browsers' popup blockers treating window.open
   // as no longer tied to a user gesture. The button is only enabled when
   // user.meeting_link is set, so it's always defined here.
+  //
+  // IMPORTANT: no 'noopener'/'noreferrer' on THIS open — passing those makes
+  // window.open() return null in modern browsers (that's the whole point of
+  // noopener: it severs any reference back, in both directions), so we'd never
+  // be able to fill the tab in below. We still want the destination page to
+  // not get a window.opener back to us, so we null that out manually instead
+  // once we have the reference — same security property, without losing control.
   async function handleStudyTogether(friendId, friendUsername) {
-    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
     const sent = await sendStudyInvite(friendId, friendUsername);
     if (!tab) return; // popup blocked outright — nothing more we can do
     if (sent) {

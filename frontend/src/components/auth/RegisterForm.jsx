@@ -19,8 +19,8 @@ export default function RegisterForm() {
     setLoading(true);
     try {
       await register(form);
-      const { token, user } = await login({ username: form.username, password: form.password });
-      loginUser(token, user);
+      const { token } = await login({ username: form.username, password: form.password });
+      await loginUser(token);
       navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.errors?.[0]?.msg || err.response?.data?.error || 'Registration failed');

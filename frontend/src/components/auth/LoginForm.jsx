@@ -18,8 +18,8 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { token, user } = await login(form);
-      loginUser(token, user);
+      const { token } = await login(form);
+      await loginUser(token);
       navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Login failed');
