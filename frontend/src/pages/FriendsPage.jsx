@@ -96,6 +96,26 @@ export default function FriendsPage() {
     );
   }
 
+  // Sender-only: opens MY OWN meeting link right after the invite goes out —
+  // the recipient's side is untouched (they still just get the toast with a
+  // manual Join button, see useFriends.js's study_invite listener).
+  //
+  // The tab is opened synchronously, in direct response to the click, and
+  // only filled in once the invite is confirmed sent — opening it *after*
+  // awaiting the API call risks browsers' popup blockers treating window.open
+  // as no longer tied to a user gesture. The button is only enabled when
+  // user.meeting_link is set, so it's always defined here.
+  async function handleStudyTogether(friendId, friendUsername) {
+    const tab = window.open('', '_blank', 'noopener,noreferrer');
+    const sent = await sendStudyInvite(friendId, friendUsername);
+    if (!tab) return; // popup blocked outright — nothing more we can do
+    if (sent) {
+      tab.location.href = user.meeting_link;
+    } else {
+      tab.close();
+    }
+  }
+
   function toggleFriendSelection(friendId) {
     setSelectedFriendIds(prev =>
       prev.includes(friendId) ? prev.filter(id => id !== friendId) : [...prev, friendId]
@@ -288,7 +308,7 @@ export default function FriendsPage() {
                 </div>
                 <button
                   className={styles.btnStudyTogether}
-                  onClick={() => sendStudyInvite(f.id, f.username)}
+                  onClick={() => handleStudyTogether(f.id, f.username)}
                   disabled={!user?.meeting_link}
                   title={user?.meeting_link
                     ? `Invite ${f.username} to study together`

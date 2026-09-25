@@ -146,12 +146,17 @@ export default function useFriends() {
     toast.success('Friend request sent!');
   }
 
+  // Returns whether the invite actually went out — the caller (FriendsPage.jsx)
+  // uses this to decide whether to open the sender's own meeting link, same
+  // boolean-result pattern as useStudyGroups.js's createGroup.
   async function sendStudyInvite(userId, username) {
     try {
       await api.sendStudyInvite(userId);
       toast.success(`Invite sent to ${username}!`);
+      return true;
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to send invite');
+      return false;
     }
   }
 
