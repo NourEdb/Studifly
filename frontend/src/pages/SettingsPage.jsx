@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,25 @@ export default function SettingsPage() {
   const [remindersEnabled, setRemindersEnabled] = useState(user?.email_reminders_enabled ?? true);
   const [appearOffline, setAppearOffline]       = useState(user?.appear_offline ?? false);
   const [meetingLink, setMeetingLink]           = useState(user?.meeting_link || '');
+
+  // useState's initializer above only runs on this component's very first
+  // render — if SettingsPage happens to mount before AuthContext's getMe()
+  // call has resolved (user is still null/incomplete at that instant), these
+  // fields lock onto an empty/default snapshot and never pick up the real
+  // values once `user` actually populates. This resyncs them the moment a
+  // (new) user object with a real id shows up. Keyed on user?.id rather than
+  // the whole `user` object so it fires once per login, not on every
+  // unrelated refreshUser() call this page already makes after each save —
+  // otherwise saving the weekly goal would blow away an in-progress,
+  // not-yet-saved edit sitting in the display name field, etc.
+  useEffect(() => {
+    if (!user) return;
+    setDisplayName(user.display_name || '');
+    setWeeklyGoalHours(user.weekly_goal_hours ?? 10);
+    setRemindersEnabled(user.email_reminders_enabled ?? true);
+    setAppearOffline(user.appear_offline ?? false);
+    setMeetingLink(user.meeting_link || '');
+  }, [user?.id]);
 
   const [profileMsg, setProfileMsg] = useState(null);
   const [goalMsg, setGoalMsg]       = useState(null);
