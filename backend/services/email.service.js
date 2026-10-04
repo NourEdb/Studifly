@@ -9,6 +9,15 @@ const TYPE_LABELS = {
   other:    { label: 'Other',    color: '#7B7A99', icon: '📌' },
 };
 
+const TASK_CATEGORY_LABELS = {
+  exam:     { label: 'Exam',     color: '#E85454', icon: '📝' },
+  homework: { label: 'Homework', color: '#4A9FE0', icon: '📘' },
+  project:  { label: 'Project',  color: '#F5A623', icon: '🛠️' },
+  other:    { label: 'Other',    color: '#7B7A99', icon: '📌' },
+};
+
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
+
 function createTransporter() {
   return nodemailer.createTransport({
     service: 'gmail',
@@ -17,6 +26,77 @@ function createTransporter() {
       pass: process.env.EMAIL_PASS,
     },
   });
+}
+
+// EMAIL_FROM takes either "a@b.com" or "Name <a@b.com>". Falls back to the SMTP
+// account so local dev still works with only EMAIL_USER set.
+function senderFrom() {
+  const raw = (process.env.EMAIL_FROM || process.env.EMAIL_USER || '').trim();
+  const match = raw.match(/^(.*)<(.+)>\s*$/);
+  if (match) {
+    return { name: match[1].trim().replace(/^"|"$/g, '') || 'Studifly', email: match[2].trim() };
+  }
+  return { name: 'Studifly', email: raw };
+}
+
+function emailTransportName() {
+  return process.env.BREVO_API_KEY ? 'brevo' : 'smtp';
+}
+
+function isEmailConfigured() {
+  return !!process.env.BREVO_API_KEY || !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+}
+
+async function sendViaBrevo({ to, subject, html }) {
+  const res = await fetch(BREVO_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: senderFrom(),
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    // Brevo puts the actual reason (unverified sender, invalid recipient, quota
+    // exceeded) in the body. Without it every failure looks identical in logs.
+    const detail = await res.text().catch(() => '');
+    const err = new Error(`Brevo API ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`);
+    err.code = `BREVO_${res.status}`;
+    err.responseCode = res.status;
+    throw err;
+  }
+}
+
+async function sendViaSmtp({ to, subject, html }) {
+  const sender = senderFrom();
+  const transporter = createTransporter();
+  await transporter.sendMail({
+    from: `"${sender.name}" <${sender.email}>`,
+    to,
+    subject,
+    html,
+  });
+}
+
+// Single exit point for every outgoing email. Production uses Brevo's HTTPS API
+// because Render's free tier blocks outbound SMTP ports (25/465/587), which is
+// why nodemailer silently timed out there; SMTP stays the local-dev path.
+async function sendEmail({ to, subject, html }) {
+  if (!to) throw new Error('sendEmail: missing recipient');
+  if (!isEmailConfigured()) throw new Error('sendEmail: no transport configured (set BREVO_API_KEY, or EMAIL_USER + EMAIL_PASS)');
+
+  const transport = emailTransportName();
+  if (transport === 'brevo') await sendViaBrevo({ to, subject, html });
+  else await sendViaSmtp({ to, subject, html });
+
+  console.log(`[email] Sent via ${transport} → ${to} | "${subject}"`);
 }
 
 function escapeHtml(str) {
@@ -28,19 +108,16 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function dayLabelFor(event) {
-  return event.event_date === dateStrUTC(0) ? 'today' : 'tomorrow';
+function dayLabelFor(dateStr) {
+  return dateStr === dateStrUTC(0) ? 'today' : 'tomorrow';
 }
 
-function buildHtml(event) {
-  const meta = TYPE_LABELS[event.type] || TYPE_LABELS.other;
-  const dayLabel = dayLabelFor(event);
-  const timeRow = event.event_time
-    ? `<tr><td class="label">Time</td><td>${escapeHtml(event.event_time)}</td></tr>`
-    : '';
-  const notesRow = event.notes
-    ? `<tr><td class="label">Notes</td><td>${escapeHtml(event.notes)}</td></tr>`
-    : '';
+function buildReminderHtml({ meta, dayLabel, kicker, title, rows }) {
+  const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const detailRows = rows
+    .filter(([, value]) => value)
+    .map(([label, value]) => `<tr><td class="label">${escapeHtml(label)}</td><td>${escapeHtml(value)}</td></tr>`)
+    .join('\n        ');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -75,22 +152,50 @@ function buildHtml(event) {
       <div class="badge">${meta.icon} Reminder for ${dayLabel}</div>
     </div>
     <div class="content">
-      <p class="reminder-title">Upcoming event</p>
-      <p class="event-title">${escapeHtml(event.title)}</p>
+      <p class="reminder-title">${escapeHtml(kicker)}</p>
+      <p class="event-title">${escapeHtml(title)}</p>
       <span class="type-chip">${meta.label}</span>
       <table class="details">
-        <tr><td class="label">Date</td><td>${event.event_date}</td></tr>
-        ${timeRow}
-        ${notesRow}
+        ${detailRows}
       </table>
       <div class="cta">
-        <a href="#">Open Studifly</a>
+        <a href="${appUrl}">Open Studifly</a>
       </div>
     </div>
     <div class="footer">Studifly &middot; Learn, grow, and fly.</div>
   </div>
 </body>
 </html>`;
+}
+
+function buildEventHtml(event) {
+  const meta = TYPE_LABELS[event.type] || TYPE_LABELS.other;
+  return buildReminderHtml({
+    meta,
+    dayLabel: dayLabelFor(event.event_date),
+    kicker: 'Upcoming event',
+    title: event.title,
+    rows: [
+      ['Date', event.event_date],
+      ['Time', event.event_time],
+      ['Notes', event.notes],
+    ],
+  });
+}
+
+function buildTaskHtml(task) {
+  const meta = TASK_CATEGORY_LABELS[task.category] || TASK_CATEGORY_LABELS.other;
+  return buildReminderHtml({
+    meta,
+    dayLabel: dayLabelFor(task.due_date),
+    kicker: 'Task due soon',
+    title: task.name,
+    rows: [
+      ['Due', task.due_date],
+      ['Course', task.course_name],
+      ['Status', task.status === 'in_progress' ? 'In progress' : 'Pending'],
+    ],
+  });
 }
 
 function buildPasswordResetHtml(resetUrl) {
@@ -145,24 +250,35 @@ function buildPasswordResetHtml(resetUrl) {
 
 async function sendReminderEmail(toEmail, event) {
   const meta = TYPE_LABELS[event.type] || TYPE_LABELS.other;
-  const dayLabel = dayLabelFor(event);
-  const transporter = createTransporter();
-  await transporter.sendMail({
-    from: `"Studifly" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: toEmail,
-    subject: `${meta.icon} Reminder: "${event.title}" is ${dayLabel}`,
-    html: buildHtml(event),
+    subject: `${meta.icon} Reminder: "${event.title}" is ${dayLabelFor(event.event_date)}`,
+    html: buildEventHtml(event),
+  });
+}
+
+async function sendTaskReminderEmail(toEmail, task) {
+  const meta = TASK_CATEGORY_LABELS[task.category] || TASK_CATEGORY_LABELS.other;
+  await sendEmail({
+    to: toEmail,
+    subject: `${meta.icon} Due ${dayLabelFor(task.due_date)}: "${task.name}"`,
+    html: buildTaskHtml(task),
   });
 }
 
 async function sendPasswordResetEmail(toEmail, resetUrl) {
-  const transporter = createTransporter();
-  await transporter.sendMail({
-    from: `"Studifly" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: toEmail,
     subject: '🔐 Reset your Studifly password',
     html: buildPasswordResetHtml(resetUrl),
   });
 }
 
-module.exports = { sendReminderEmail, sendPasswordResetEmail };
+module.exports = {
+  sendEmail,
+  sendReminderEmail,
+  sendTaskReminderEmail,
+  sendPasswordResetEmail,
+  isEmailConfigured,
+  emailTransportName,
+};

@@ -18,6 +18,7 @@ const emailRoutes        = require('./routes/email.routes');
 const friendsRoutes      = require('./routes/friends.routes');
 const moodRoutes         = require('./routes/mood.routes');
 const studyGroupsRoutes  = require('./routes/study-groups.routes');
+const jobsRoutes         = require('./routes/jobs.routes');
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/email',        emailRoutes);
 app.use('/api/friends',      friendsRoutes);
 app.use('/api/mood',         moodRoutes);
 app.use('/api/study-groups', studyGroupsRoutes);
+app.use('/api/jobs',         jobsRoutes);
 
 app.use(errorHandler);
 

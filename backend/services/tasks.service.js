@@ -123,7 +123,7 @@ async function create(userId, body) {
 }
 
 async function update(userId, id, body) {
-  const task = await db.get('SELECT id FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
+  const task = await db.get('SELECT id, due_date FROM tasks WHERE id = ? AND user_id = ?', [id, userId]);
   if (!task) { const e = new Error('Not found'); e.status = 404; throw e; }
 
   const fields = [];
@@ -133,7 +133,12 @@ async function update(userId, id, body) {
   if ('course_id' in body) { fields.push('course_id = ?'); params.push(body.course_id || null); }
   if (body.activity_type !== undefined) { fields.push('activity_type = ?'); params.push(body.activity_type); }
   if (body.planned_time !== undefined) { fields.push('planned_time = ?'); params.push(body.planned_time); }
-  if ('due_date' in body) { fields.push('due_date = ?'); params.push(body.due_date || null); }
+  if ('due_date' in body) {
+    fields.push('due_date = ?');
+    params.push(body.due_date || null);
+    // Rescheduling to a new date should let the reminder job fire again for it
+    if ((body.due_date || null) !== task.due_date) fields.push('reminder_sent = false');
+  }
   if (body.category !== undefined) { fields.push('category = ?'); params.push(VALID_CATEGORIES.includes(body.category) ? body.category : 'other'); }
 
   if (fields.length) {

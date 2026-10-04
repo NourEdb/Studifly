@@ -1,17 +1,10 @@
 const Groq = require('groq-sdk');
-const nodemailer = require('nodemailer');
 const db = require('../database/db');
+const { sendEmail } = require('./email.service');
 const { previousISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
-
-function createTransporter() {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-  });
-}
 
 async function getWeeklyStats(userId) {
   // "Last week", not the current one — this runs right as the new week begins,
@@ -219,14 +212,10 @@ async function sendWeeklyReviewToUser(userId) {
       `For next week, try to spread your sessions evenly across the week so you stay fresh and retain more of what you study.`;
   }
 
-  const html = buildWeeklyReviewHtml(stats, aiSummary);
-  const transporter = createTransporter();
-
-  await transporter.sendMail({
-    from: `"Studifly" <${process.env.EMAIL_USER}>`,
+  await sendEmail({
     to: stats.email,
     subject: `📊 Your Studifly weekly review — ${stats.totalHours}h studied this week`,
-    html,
+    html: buildWeeklyReviewHtml(stats, aiSummary),
   });
 
   console.log(`[weekly-review] Sent to ${stats.email} (user ${userId})`);
@@ -235,27 +224,45 @@ async function sendWeeklyReviewToUser(userId) {
 async function sendWeeklyReviewToAll() {
   // Same week window as getWeeklyStats() — must match, or this will pick users
   // who studied last week and then generate stats for a different window.
-  const { start, end } = getISOWeekBounds(previousISOWeek());
+  const week = previousISOWeek();
+  const { start, end } = getISOWeekBounds(week);
 
   const users = await db.all(
-    `SELECT DISTINCT u.id
+    `SELECT DISTINCT u.id, u.weekly_review_last_sent
      FROM users u
      JOIN study_sessions s ON s.user_id = u.id
-     WHERE s.start_time >= ? AND s.start_time < ? AND s.duration IS NOT NULL`,
+     WHERE s.start_time >= ? AND s.start_time < ? AND s.duration IS NOT NULL
+       AND u.email_reminders_enabled = true`,
     [start, end]
   );
 
-  console.log(`[weekly-review] Found ${users.length} user(s) with sessions this week.`);
+  console.log(`[weekly-review] Week ${week} — ${users.length} eligible user(s) with sessions.`);
 
   let sent = 0;
+  let skipped = 0;
   for (const user of users) {
+    // Claim the week *before* sending, so the GitHub Actions schedule and a
+    // local cron run can never both mail the same review. Rolled back below if
+    // the send itself fails, otherwise a transient error would lose the week.
+    const claim = await db.run(
+      `UPDATE users SET weekly_review_last_sent = ?
+       WHERE id = ? AND (weekly_review_last_sent IS NULL OR weekly_review_last_sent <> ?)`,
+      [week, user.id, week]
+    );
+    if (claim.rowCount === 0) {
+      skipped++;
+      console.log(`[weekly-review] Skipped user ${user.id} — week ${week} already sent.`);
+      continue;
+    }
+
     try {
       await sendWeeklyReviewToUser(user.id);
       sent++;
     } catch (err) {
-      // err.message alone hides *why* an SMTP send failed (bad auth, quota,
-      // rejected recipient, etc.) — log the nodemailer diagnostic fields too
-      // so a future silent-delivery report is actually debuggable from logs.
+      await db.run('UPDATE users SET weekly_review_last_sent = ? WHERE id = ?', [user.weekly_review_last_sent, user.id]);
+      // err.message alone hides *why* a send failed (blocked SMTP port,
+      // unverified Brevo sender, quota, rejected recipient) — log the
+      // diagnostic fields too so silent delivery is debuggable from logs.
       console.error(
         `[weekly-review] Failed for user ${user.id}: ${err.message}` +
         (err.code ? ` | code=${err.code}` : '') +
@@ -265,8 +272,8 @@ async function sendWeeklyReviewToAll() {
     }
   }
 
-  console.log(`[weekly-review] Done — ${sent}/${users.length} weekly reviews sent.`);
-  return { sent, total: users.length };
+  console.log(`[weekly-review] Done — ${sent} sent, ${skipped} skipped (already sent), ${users.length} eligible.`);
+  return { week, sent, skipped, total: users.length };
 }
 
 module.exports = { sendWeeklyReviewToUser, sendWeeklyReviewToAll };
