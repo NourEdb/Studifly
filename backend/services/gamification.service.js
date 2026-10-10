@@ -6,7 +6,7 @@ const XP_PER_LEVEL = 200;
 const BADGE_DEFS = [
   { key: 'first_task',    name: 'First Task',    icon: '🎯', description: 'Complete your first task' },
   { key: 'week_streak',   name: 'Week Streak',   icon: '🔥', description: 'Study at least once every day for 7 days' },
-  { key: 'goal_crusher',  name: 'Goal Crusher',  icon: '💪', description: 'Reach your weekly study goal (10 h)' },
+  { key: 'goal_crusher',  name: 'Goal Crusher',  icon: '💪', description: 'Reach your weekly study goal' },
   { key: 'night_owl',     name: 'Night Owl',     icon: '🦉', description: 'Study after 10 PM' },
   { key: 'early_bird',    name: 'Early Bird',    icon: '🐦', description: 'Study before 8 AM' },
 ];
@@ -110,17 +110,21 @@ async function onTaskComplete(userId, taskId) {
 }
 
 async function getProfile(userId) {
-  const xpRow = await db.get('SELECT total_xp FROM user_xp WHERE user_id = ?', [userId]);
+  const [xpRow, userRow, earnedRows] = await Promise.all([
+    db.get('SELECT total_xp FROM user_xp WHERE user_id = ?', [userId]),
+    db.get('SELECT weekly_goal_hours FROM users WHERE id = ?', [userId]),
+    db.all('SELECT badge_key, earned_at FROM user_badges WHERE user_id = ?', [userId]),
+  ]);
   const totalXp = xpRow?.total_xp || 0;
+  const goalHours = userRow?.weekly_goal_hours || 10;
 
-  const earnedRows = await db.all(
-    'SELECT badge_key, earned_at FROM user_badges WHERE user_id = ?',
-    [userId]
-  );
   const earnedMap = Object.fromEntries(earnedRows.map(r => [r.badge_key, r.earned_at]));
 
+  // goal_crusher's description reflects the user's own goal, not a fixed
+  // number — the check in checkWeeklyGoal() uses weekly_goal_hours too.
   const badges = BADGE_DEFS.map(b => ({
     ...b,
+    description: b.key === 'goal_crusher' ? `Reach your weekly study goal (${goalHours} h)` : b.description,
     earned: b.key in earnedMap,
     earned_at: earnedMap[b.key] || null,
   }));

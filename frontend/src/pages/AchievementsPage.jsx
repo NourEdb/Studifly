@@ -50,7 +50,7 @@ export default function AchievementsPage() {
         <div className={styles.xpRules}>
           <div className={styles.rule}><span className={styles.ruleXp}>+50 XP</span> Complete a task</div>
           <div className={styles.rule}><span className={styles.ruleXp}>+10 XP</span> Per 30 minutes studied</div>
-          <div className={styles.rule}><span className={styles.ruleXp}>+100 XP</span> Reach weekly study goal (10 h)</div>
+          <div className={styles.rule}><span className={styles.ruleXp}>+100 XP</span> Reach your weekly study goal{user?.weekly_goal_hours ? ` (${user.weekly_goal_hours} h)` : ''}</div>
         </div>
       </section>
 

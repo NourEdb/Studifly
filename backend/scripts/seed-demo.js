@@ -117,12 +117,16 @@ async function main() {
   ];
 
   const taskIds = [];
-  for (const [ci, name, actType, planned, status, due] of taskData) {
+  for (const [ci, name, actType, plannedSecs, status, due] of taskData) {
     const dueDate = due !== null ? daysFromNow(due) : null;
+    // tasks.planned_time is stored in MINUTES (see tasks.service.js) — the
+    // taskData literals above are written in seconds for readability, so
+    // convert here rather than storing the raw second values.
+    const plannedMinutes = Math.round(plannedSecs / 60);
     const row = await one(
       `INSERT INTO tasks (user_id, course_id, name, activity_type, planned_time, status, due_date)
        VALUES (?,?,?,?,?,?,?) RETURNING id`,
-      [userId, courseIds[ci], name, actType, planned, status, dueDate]
+      [userId, courseIds[ci], name, actType, plannedMinutes, status, dueDate]
     );
     taskIds.push(row.id);
   }
@@ -173,6 +177,8 @@ async function main() {
   console.log(`  Created ${sessionIds.length} sessions (7-day streak days 0–6)`);
 
   // 5. Peer users (4 peers so peer_count >= 3 threshold is met)
+  // tasks: [status, plannedSecs, activityType] — plannedSecs is in seconds for
+  // readability, converted to minutes before insert below.
   const peerDefs = [
     {
       username: 'peer1_demo',
@@ -208,11 +214,13 @@ async function main() {
     const pid = pRow.id;
 
     const pTaskIds = [];
-    for (const [status, planned, actType] of p.tasks) {
+    for (const [status, plannedSecs, actType] of p.tasks) {
+      // Same seconds-in-literal, minutes-in-column conversion as the main
+      // taskData loop above.
       const pt = await one(
         `INSERT INTO tasks (user_id, name, activity_type, planned_time, status)
          VALUES (?,?,?,?,?) RETURNING id`,
-        [pid, 'Sample Task', actType, planned, status]
+        [pid, 'Sample Task', actType, Math.round(plannedSecs / 60), status]
       );
       pTaskIds.push(pt.id);
     }

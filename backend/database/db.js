@@ -37,6 +37,7 @@ const MIGRATIONS = [
   path.join(__dirname, 'migrations/027_study_groups.sql'),
   path.join(__dirname, 'migrations/028_meeting_link.sql'),
   path.join(__dirname, 'migrations/029_email_job_tracking.sql'),
+  path.join(__dirname, 'migrations/030_disable_studifly_local_reminders.sql'),
 ];
 
 async function initDb() {

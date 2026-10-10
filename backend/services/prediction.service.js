@@ -41,7 +41,9 @@ async function getTaskPredictions(userId) {
   const dailyPace = avgWeeklySeconds / 7;
 
   const classified = tasks.map(t => {
-    const remaining_seconds = Math.max((t.planned_time || 0) - (t.actual_seconds || 0), 0);
+    // planned_time is stored in minutes (see tasks.service.js) — convert to
+    // seconds before comparing against actual_seconds.
+    const remaining_seconds = Math.max((t.planned_time || 0) * 60 - (t.actual_seconds || 0), 0);
     const due = new Date(t.due_date);
     const todayDate = new Date(today);
     const days_remaining = Math.round((due - todayDate) / (1000 * 60 * 60 * 24));
