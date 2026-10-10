@@ -8,6 +8,14 @@
   padding: 5px 6px;
 }
 
+/* Desktop only — .chip is a flex item inside the day column's body; without
+   this, its nowrap title text (below) makes IT want to be as wide as the
+   full title, which was the other half of the equal-width-columns bug (see
+   WeeklyPlanner.module.css). Mobile is untouched. */
+@media (min-width: 768px) {
+  .chip { min-width: 0; }
+}
+
 .body {
   flex: 1;
   min-width: 0;

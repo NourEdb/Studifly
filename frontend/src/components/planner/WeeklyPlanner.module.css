@@ -1,2 +1,10 @@
 .header { margin-bottom: 16px; }
 .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+
+/* Desktop only — mobile keeps the plain 1fr columns above unchanged.
+   minmax(0, 1fr) (rather than plain 1fr) removes each track's automatic
+   content-based minimum, which is what let a day with a long title/event
+   blow its column wider than its six neighbors. */
+@media (min-width: 768px) {
+  .grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+}

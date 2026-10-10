@@ -24,3 +24,16 @@
 .footer { padding: 8px; border-top: 1px solid var(--color-border); display: flex; flex-direction: column; gap: 3px; }
 .planned, .actual { font-size: 0.7rem; color: var(--color-text-muted); }
 .actual { color: var(--color-purple); font-weight: 600; }
+
+/* Desktop only, paired with WeeklyPlanner.module.css's equal-width grid.
+   .col is a grid item — without min-width: 0 it can still force its own
+   track wider than the others even once the track's minimum is 0. .taskItem
+   is .body's flex child (same "flexbox min-width:auto" shrink issue as
+   .chip/.card below) — giving it min-width: 0 too, plus wrap on .taskName,
+   means a long task title wraps inside the card instead of pushing the
+   column out. Mobile is untouched. */
+@media (min-width: 768px) {
+  .col { min-width: 0; }
+  .taskItem { min-width: 0; }
+  .taskName { overflow-wrap: break-word; word-break: break-word; }
+}

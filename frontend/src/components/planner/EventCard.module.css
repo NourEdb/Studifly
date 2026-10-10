@@ -8,6 +8,12 @@
   padding: 4px 6px;
 }
 
+/* Desktop only — same reasoning as StudyBlockChip.module.css's .chip rule.
+   Mobile is untouched. */
+@media (min-width: 768px) {
+  .card { min-width: 0; }
+}
+
 .dot {
   width: 6px;
   height: 6px;
