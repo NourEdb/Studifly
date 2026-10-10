@@ -2,6 +2,7 @@ const Groq = require('groq-sdk');
 const db = require('../database/db');
 const { currentISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
 const { getTaskPredictions } = require('./prediction.service');
+const { finalizeCompletion } = require('../utils/textHelpers');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
@@ -15,9 +16,10 @@ function fmtHour(h) {
 async function getStudyContext(userId) {
   const { start, end } = getISOWeekBounds(currentISOWeek());
 
-  const [weekRow, sessionRow, bestHoursRows, courseRow, taskRows, reflectionRow, overtimeRow, prediction] = await Promise.all([
+  const [weekRow, sessionRow, bestHoursRows, courseRow, taskRows, overdueRow, userRow, reflectionRow, overtimeRow, prediction] = await Promise.all([
     db.get(
-      `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds
+      `SELECT COALESCE(SUM(duration), 0)::int AS total_seconds,
+              COUNT(*)::int                   AS session_count
        FROM study_sessions WHERE user_id = ? AND start_time >= ? AND start_time < ? AND duration IS NOT NULL`,
       [userId, start, end]
     ),
@@ -45,6 +47,16 @@ async function getStudyContext(userId) {
     ),
     db.all(
       `SELECT status, COUNT(*)::int AS count FROM tasks WHERE user_id = ? GROUP BY status`,
+      [userId]
+    ),
+    // Same "overdue" definition as dashboard.service.js's getSummary(): not
+    // completed and past its due date.
+    db.get(
+      `SELECT COUNT(*)::int AS count FROM tasks WHERE user_id = ? AND status != 'completed' AND due_date < CURRENT_DATE::text`,
+      [userId]
+    ),
+    db.get(
+      `SELECT weekly_goal_hours FROM users WHERE id = ?`,
       [userId]
     ),
     // Reflection data: avg focus/difficulty, completion breakdown
@@ -83,9 +95,17 @@ async function getStudyContext(userId) {
 
   return {
     weeklyHours:          parseFloat(weeklyHours),
+    weeklySessionCount:   weekRow.session_count,
+    weeklyGoalHours:      userRow?.weekly_goal_hours || 10,
     completionRate,
     totalTasks:           total,
     completedTasks:       counts.completed,
+    // "Not completed" = pending + in_progress combined, not just status
+    // = 'pending' — the model previously said "15 pending tasks" when 15
+    // was actually totalTasks, so this needs its own explicit count rather
+    // than being re-derived (or mis-derived) from total/completed in the prompt.
+    pendingTasks:         total - counts.completed,
+    overdueTasks:         overdueRow.count,
     avgSessionMinutes,
     totalSessions:        sessionRow.total_sessions,
     bestHours,
@@ -128,22 +148,28 @@ function buildSystemPrompt(ctx) {
     ? `Tasks repeatedly needing more time: ${ctx.tasksNeedingBreakdown.map(t => `"${t.name}" (${t.over_count}x)`).join(', ')}`
     : null;
 
+  // Every line below states its own time period explicitly (this week vs.
+  // all time) — ctx.totalSessions and most of the other fields are all-time
+  // totals computed with no date filter, NOT this-week figures. Without an
+  // explicit label here, the model previously inferred they were all "this
+  // week" (the stat listed just above) and reported e.g. an all-time session
+  // count as "sessions this week".
   return `You are an encouraging AI study coach inside Studifly, a study-tracking app.
 Your job is to give short, practical, personalized advice based on the student's real data.
 
 Current student stats:
-- This week: ${ctx.weeklyHours}h studied
-- Average session length: ${ctx.avgSessionMinutes} min
-- Total sessions logged: ${ctx.totalSessions}
-- Tasks completed: ${ctx.completedTasks} of ${ctx.totalTasks} (${ctx.completionRate}% completion rate)
-- Most studied course/subject: ${courseInfo}
-- Peak productivity hours: ${hoursInfo}
-- ${focusInfo}
-- Session completion: ${reflectionInfo}${overtimeInfo ? `\n- ${overtimeInfo}` : ''}${ctx.predictionSummary ? `\n- Task completion forecast: ${ctx.predictionSummary}` : ''}
+- This week: ${ctx.weeklyHours}h studied across ${ctx.weeklySessionCount} session${ctx.weeklySessionCount === 1 ? '' : 's'} (weekly goal: ${ctx.weeklyGoalHours}h)
+- All time: ${ctx.totalSessions} total session${ctx.totalSessions === 1 ? '' : 's'} logged, averaging ${ctx.avgSessionMinutes} min each
+- Tasks (all time): ${ctx.totalTasks} total, ${ctx.completedTasks} completed, ${ctx.pendingTasks} pending (not completed), ${ctx.overdueTasks} overdue (${ctx.completionRate}% completion rate)
+- Most studied course/subject (all time): ${courseInfo}
+- Peak productivity hours (all time): ${hoursInfo}
+- ${focusInfo} (all time)
+- Session completion (all time): ${reflectionInfo}${overtimeInfo ? `\n- ${overtimeInfo} (all time)` : ''}${ctx.predictionSummary ? `\n- Task completion forecast (pending tasks with deadlines): ${ctx.predictionSummary}` : ''}
 
 Rules:
 - Keep every reply under 120 words.
-- Be specific — reference the student's actual numbers when relevant.
+- Be specific — reference the student's actual numbers when relevant, and always use the exact time period each stat above is labeled with (this week vs. all time) — never state an all-time figure as if it were this week's, or vice versa.
+- Use only the exact task counts and weekly goal given above (total, completed, pending, overdue, weekly goal) — never combine, re-derive, round, or restate them as a different number (e.g. the total task count is not the pending count, and the weekly goal is not the hours actually studied).
 - Be warm and motivating, not generic.
 - Use plain text only (no markdown, no bullet symbols, no asterisks).
 - If tasks repeatedly exceed planned time, suggest breaking them into smaller parts.
@@ -184,10 +210,19 @@ async function chat(userId, newUserMessage) {
   const completion = await groq.chat.completions.create({
     model: GROQ_MODEL,
     messages: groqMessages,
-    max_tokens: 300,
+    // openai/gpt-oss-20b is a reasoning model — reasoning tokens are drawn
+    // from the same budget as the visible reply, so a low ceiling here (the
+    // old max_tokens: 300) could leave the reply cut off mid-sentence/word
+    // even though the system prompt only asks for ~120 words.
+    // max_completion_tokens (not the deprecated max_tokens) covers reasoning
+    // + reply together; reasoning_effort: 'low' keeps reasoning brief so more
+    // of that budget goes to the actual answer.
+    max_completion_tokens: 1500,
+    reasoning_effort: 'low',
   });
 
-  const reply = completion.choices[0].message.content;
+  const choice = completion.choices[0];
+  const reply = finalizeCompletion(choice.message.content, choice.finish_reason);
 
   await db.run(
     'INSERT INTO ai_coach_messages (user_id, role, content) VALUES (?, ?, ?), (?, ?, ?)',
@@ -226,10 +261,14 @@ async function getCourseInsight(userId, { course_name, stats, task_names = [] })
       },
       { role: 'user', content: userPrompt },
     ],
-    max_tokens: 200,
+    // See chat()'s identical comment — reasoning tokens for this model draw
+    // from the same budget as the visible reply.
+    max_completion_tokens: 1500,
+    reasoning_effort: 'low',
   });
 
-  return { insight: completion.choices[0].message.content.trim() };
+  const choice = completion.choices[0];
+  return { insight: finalizeCompletion(choice.message.content, choice.finish_reason).trim() };
 }
 
 module.exports = { getContext, getHistory, chat, clearHistory, getCourseInsight };

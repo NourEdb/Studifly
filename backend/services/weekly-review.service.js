@@ -2,6 +2,7 @@ const Groq = require('groq-sdk');
 const db = require('../database/db');
 const { sendEmail } = require('./email.service');
 const { previousISOWeek, getISOWeekBounds } = require('../utils/dateHelpers');
+const { finalizeCompletion } = require('../utils/textHelpers');
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-20b';
@@ -98,10 +99,19 @@ async function generateAISummary(stats) {
       },
       { role: 'user', content: prompt },
     ],
-    max_tokens: 400,
+    // openai/gpt-oss-20b is a reasoning model — reasoning tokens are drawn
+    // from the same budget as the visible reply, so a low ceiling here (the
+    // old max_tokens: 400) could leave the reply cut off mid-sentence even
+    // though the prompt only asks for ~200 words. max_completion_tokens
+    // (not the deprecated max_tokens) covers reasoning + reply together;
+    // reasoning_effort: 'low' keeps reasoning brief so more of that budget
+    // goes to the actual summary.
+    max_completion_tokens: 1500,
+    reasoning_effort: 'low',
   });
 
-  return completion.choices[0].message.content.trim();
+  const choice = completion.choices[0];
+  return finalizeCompletion(choice.message.content, choice.finish_reason).trim();
 }
 
 function buildWeeklyReviewHtml(stats, aiSummary) {

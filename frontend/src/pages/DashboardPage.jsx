@@ -12,6 +12,7 @@ import PredictionCard from '../components/dashboard/PredictionCard';
 import MoodCorrelationChart from '../components/dashboard/MoodCorrelationChart';
 import { getCorrelation } from '../api/mood.api';
 import { generateDashboardPdf } from '../utils/generatePdf';
+import { fmtWeek } from '../utils/formatWeek';
 import styles from './DashboardPage.module.css';
 
 function PeerBanner({ peers, weeklySeconds, completionRate }) {
@@ -106,7 +107,7 @@ export default function DashboardPage() {
           icon="⏱️"
           label="This week"
           value={fmtHours(summary.weekly_seconds)}
-          sub={summary.week}
+          sub={fmtWeek(summary.week)}
           color="var(--color-purple)"
         />
         <StatCard
