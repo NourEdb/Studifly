@@ -13,7 +13,7 @@ const PAGE_TITLES = {
   '/courses':      'My Courses',
   '/tasks':        'Tasks',
   '/tracker':      'Study Tracker',
-  '/planner':      'Weekly Planner',
+  '/planner':      'Planner',
 };
 
 export default function Layout() {
