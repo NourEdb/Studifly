@@ -8,10 +8,43 @@
   padding: 4px 6px;
 }
 
-/* Desktop only — same reasoning as StudyBlockChip.module.css's .chip rule.
-   Mobile is untouched. */
+/* Desktop only — mobile keeps the single-line ellipsis layout below
+   unchanged. Switches .card from a single flex row to a grid with the title
+   on its own full-width row (clamped to 2 lines instead of truncated to a
+   couple of letters) and the time + edit/delete icons moved to a second row
+   underneath. .body has no box of its own in CSS Grid/Flexbox terms once
+   display: contents is set — it still groups .title/.time in the markup,
+   but .title and .time become direct grid children of .card, placeable by
+   grid-area like .dot/.edit/.del. min-width: 0 carries over from before —
+   that was for .card's own fit inside the day column, same reasoning as
+   StudyBlockChip.module.css's .chip rule. */
 @media (min-width: 768px) {
-  .card { min-width: 0; }
+  .card {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    grid-template-areas:
+      "dot   title title title"
+      ".     time  edit  del";
+    align-items: center;
+    column-gap: 5px;
+    row-gap: 2px;
+    min-width: 0;
+  }
+  .dot   { grid-area: dot; align-self: start; margin-top: 4px; }
+  .body  { display: contents; }
+  .title {
+    grid-area: title;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+  .time  { grid-area: time; }
+  .edit  { grid-area: edit; }
+  .del   { grid-area: del; }
 }
 
 .dot {

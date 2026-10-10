@@ -94,6 +94,25 @@
 .chipDot { width: 6px; height: 6px; border-radius: 50%; background: var(--chip-color); flex-shrink: 0; }
 .chipLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* Desktop only (matches the >=640px range this component already treats as
+   "not mobile" below) — fixes the exact same bug class the Weekly Planner
+   had: repeat(7, 1fr) alone lets a cell's content set its track's minimum,
+   so a day with a long event title could blow its column wider than its six
+   neighbors. This wasn't touched by today's Weekly Planner fixes (confirmed
+   via git diff/log — different file, and CSS Modules can't leak class rules
+   across files), it's a pre-existing instance of the same bug that simply
+   hadn't been noticed here yet. min-width: 0 on .cell/.chip/.chipLabel lets
+   each level actually shrink instead of forcing the next one wider; .chip's
+   own overflow: hidden then truncates the label via .chipLabel's existing
+   ellipsis instead of pushing the cell out. Below 768px, unchanged. */
+@media (min-width: 768px) {
+  .weekdays { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .grid     { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cell     { min-width: 0; }
+  .chip     { min-width: 0; }
+  .chipLabel { min-width: 0; }
+}
+
 .moreLabel { font-size: 0.65rem; color: var(--color-text-muted); padding-left: 2px; }
 
 .dayDetail {

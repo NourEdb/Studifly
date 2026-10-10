@@ -1,10 +1,23 @@
 .header { margin-bottom: 16px; }
 .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 
-/* Desktop only — mobile keeps the plain 1fr columns above unchanged.
+/* Mobile (below 768px) keeps the plain 1fr columns above, unchanged.
+
+   768-999px: narrow desktop/tablet widths where squeezing 7 equal columns
+   into the available width makes them too narrow to read. Scrolls
+   horizontally instead, with a 110px floor per column. */
+@media (min-width: 768px) and (max-width: 999px) {
+  .grid {
+    grid-template-columns: repeat(7, minmax(110px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px; /* room for the scrollbar so it doesn't crowd the last row of cards */
+  }
+}
+
+/* >=1000px: plenty of room — equal-width columns, no scrolling needed.
    minmax(0, 1fr) (rather than plain 1fr) removes each track's automatic
    content-based minimum, which is what let a day with a long title/event
    blow its column wider than its six neighbors. */
-@media (min-width: 768px) {
+@media (min-width: 1000px) {
   .grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
 }

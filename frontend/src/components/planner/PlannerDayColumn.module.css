@@ -35,5 +35,10 @@
 @media (min-width: 768px) {
   .col { min-width: 0; }
   .taskItem { min-width: 0; }
-  .taskName { overflow-wrap: break-word; word-break: break-word; }
+  /* overflow-wrap: anywhere only breaks mid-word as a last resort, when a
+     single word is wider than the available space — normal words still wrap
+     at spaces. word-break: break-word was removed because it's a legacy
+     alias for overflow-wrap: anywhere in modern browsers and was breaking
+     words that didn't need to ("Homewor k Set 5"). */
+  .taskName { overflow-wrap: anywhere; }
 }
