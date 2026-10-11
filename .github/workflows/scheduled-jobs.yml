@@ -4,9 +4,7 @@ name: Scheduled jobs
 # fires reliably. These schedules drive the same job logic over HTTP instead.
 on:
   schedule:
-    - cron: '0 * * * *'   # reminders — hourly
-    - cron: '0 5 * * 0'   # weekly review — 08:00 Israel while IDT (UTC+3)
-    - cron: '0 6 * * 0'   # weekly review — 08:00 Israel while IST (UTC+2)
+    - cron: '0 * * * *'   # hourly — drives both jobs below
   workflow_dispatch:
     inputs:
       job:
@@ -19,7 +17,7 @@ on:
 
 jobs:
   reminders:
-    if: github.event.schedule == '0 * * * *' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'reminders')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'reminders')
     runs-on: ubuntu-latest
     steps:
       # --retry handles the cold start: the first request to a sleeping free
@@ -32,19 +30,28 @@ jobs:
             "${{ secrets.BACKEND_URL }}/api/jobs/reminders"
 
   weekly-review:
-    if: github.event.schedule == '0 5 * * 0' || github.event.schedule == '0 6 * * 0' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'weekly-review')
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.job == 'weekly-review')
     runs-on: ubuntu-latest
     steps:
-      # Actions cron is UTC-only and cannot express a timezone, so both possible
-      # UTC hours are scheduled above and the wrong one is dropped here. The
-      # per-user week claim in weekly-review.service.js is the second safety net.
+      # GitHub Actions' free-tier cron is best-effort and can skip a scheduled
+      # run entirely — this is exactly what happened: both the 05:00 and
+      # 06:00 UTC attempts aimed at landing on "08:00 Israel" were skipped,
+      # and the review never went out that week. Rather than depend on one or
+      # two specific hours landing, this checks on EVERY hourly tick whether
+      # it's currently Sunday (the week just ended, report it) or Monday (a
+      # fallback in case every Sunday tick got skipped) in Israel, and calls
+      # the endpoint if so — ~24-48 chances across the window instead of 2.
+      # Calling it repeatedly is safe: the per-user week claim in
+      # weekly-review.service.js means the first successful call each week
+      # claims and sends for every eligible user, and every later call that
+      # same week is a no-op for them.
       - name: POST /api/jobs/weekly-review
         run: |
           if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
-            HOUR=$(TZ=Asia/Jerusalem date +%H)
-            echo "Israel local time is $(TZ=Asia/Jerusalem date) (hour=$HOUR)"
-            if [ "$HOUR" != "08" ]; then
-              echo "Not 08:00 Israel — this run is the other DST offset. Skipping."
+            DOW=$(TZ=Asia/Jerusalem date +%u)  # ISO day-of-week: 1=Monday … 7=Sunday
+            echo "Israel local time is $(TZ=Asia/Jerusalem date) (day-of-week=$DOW)"
+            if [ "$DOW" != "7" ] && [ "$DOW" != "1" ]; then
+              echo "Not Sunday or Monday in Israel — skipping."
               exit 0
             fi
           fi

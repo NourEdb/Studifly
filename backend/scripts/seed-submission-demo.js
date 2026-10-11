@@ -215,6 +215,11 @@ const MOOD_NOTES = [
   'Back on track, steady pace.',
 ];
 
+// How far energy's deterministic offset from mood is each day — mostly 1,
+// sometimes 2. See the mood/energy loop below for how the offset direction
+// is chosen so it can never collide with mood after clamping to 1-5.
+const ENERGY_OFFSET_MAGNITUDE = [1, 1, 2, 1, 1, 2, 1, 1, 1, 2, 1, 1, 2, 1];
+
 // ── DB helpers (bound to the transaction client) ────────────────────────────
 
 function makeQuery(client) {
@@ -412,10 +417,22 @@ async function main() {
     // mood.service.js.
     for (let d = 0; d <= 13; d++) {
       const minutes = minutesByDaysBack[d] || 0;
-      let mood = 3, energy = 3;
-      if (minutes >= 90)      { mood = 5; energy = 5; }
-      else if (minutes >= 45) { mood = 4; energy = 4; }
-      else if (minutes === 0) { mood = d % 2 === 0 ? 2 : 3; energy = d % 2 === 0 ? 2 : 3; }
+      let mood = 3;
+      if (minutes >= 90)      mood = 5;
+      else if (minutes >= 45) mood = 4;
+      else if (minutes === 0) mood = d % 2 === 0 ? 2 : 3;
+
+      // Energy is generated independently of mood (previously always equal
+      // to it, which made the two lines on the Mood & Productivity chart
+      // overlap into one). It stays loosely tied to the same day's minutes
+      // via `mood`, offset by ENERGY_OFFSET_MAGNITUDE — usually 1, sometimes
+      // 2. The offset direction leans away from whichever bound mood is
+      // already near (mood>=4 offsets down, mood<=2 offsets up, mood===3
+      // alternates) so mood+offset never needs clamping back to mood's own
+      // value — i.e. energy can never equal mood, for any mood 1-5.
+      const direction = mood >= 4 ? -1 : mood <= 2 ? 1 : (d % 2 === 0 ? 1 : -1);
+      const energy = Math.min(5, Math.max(1, mood + direction * ENERGY_OFFSET_MAGNITUDE[d % ENERGY_OFFSET_MAGNITUDE.length]));
+
       const note = d % 2 === 0 ? MOOD_NOTES[d % MOOD_NOTES.length] : null;
       await q(
         `INSERT INTO mood_checkins (user_id, mood_score, energy_score, note, checkin_date)

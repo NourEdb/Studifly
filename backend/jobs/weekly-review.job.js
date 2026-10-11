@@ -18,6 +18,14 @@ function startWeeklyReviewJob() {
     return;
   }
 
+  if (process.env.ENABLE_LOCAL_CRON !== 'true') {
+    // Same reasoning as reminder.job.js — off by default so a developer's
+    // laptop never emails real users from the shared database just by being
+    // left running. Opt in explicitly in .env to exercise this locally.
+    console.log('[weekly-review-job] Local dev — in-process cron disabled (set ENABLE_LOCAL_CRON=true in .env to enable). Call POST /api/jobs/weekly-review directly to test.');
+    return;
+  }
+
   // Every Sunday at 8:00 AM Israel time
   cron.schedule('0 8 * * 0', () => {
     console.log('[weekly-review-job] Running — sending weekly reviews...');
@@ -31,7 +39,7 @@ function startWeeklyReviewJob() {
     );
   }, { timezone: 'Asia/Jerusalem' });
 
-  console.log('[weekly-review-job] Scheduled: Sundays at 08:00 Asia/Jerusalem (local dev).');
+  console.log('[weekly-review-job] Scheduled: Sundays at 08:00 Asia/Jerusalem (local dev, ENABLE_LOCAL_CRON=true).');
 }
 
 module.exports = { startWeeklyReviewJob };

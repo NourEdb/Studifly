@@ -54,23 +54,42 @@ async function sendReminders() {
 
   let sent = 0;
   for (const event of events) {
+    // Claim BEFORE sending, not after: the SELECT above and this UPDATE are
+    // two separate statements, so two runners (e.g. a developer's local cron
+    // and GitHub Actions, both pointed at the same database) can both select
+    // the same reminder_sent=false row before either one updates it — and
+    // without this claim, both would then send. The WHERE clause makes the
+    // claim atomic: only the runner whose UPDATE actually flips a row (rowCount
+    // === 1) goes on to send; the other sees rowCount === 0 and skips.
+    const claim = await db.run('UPDATE events SET reminder_sent = true WHERE id = ? AND reminder_sent = false', [event.id]);
+    if (claim.rowCount === 0) {
+      console.log(`[reminder-job] Skipped — event id=${event.id} already claimed by another run.`);
+      continue;
+    }
     try {
       await sendReminderEmail(event.email, event);
-      await db.run('UPDATE events SET reminder_sent = true WHERE id = ?', [event.id]);
       sent++;
       console.log(`[reminder-job] ✓ Sent and marked — event id=${event.id} "${event.title}" → ${event.email}`);
     } catch (err) {
+      // Release the claim so a later run can retry — otherwise a send
+      // failure here would permanently mark this reminder as sent.
+      await db.run('UPDATE events SET reminder_sent = false WHERE id = ?', [event.id]);
       console.error(`[reminder-job] ✗ Failed — event id=${event.id} "${event.title}": ${describeError(err)}`);
     }
   }
 
   for (const task of tasks) {
+    const claim = await db.run('UPDATE tasks SET reminder_sent = true WHERE id = ? AND reminder_sent = false', [task.id]);
+    if (claim.rowCount === 0) {
+      console.log(`[reminder-job] Skipped — task id=${task.id} already claimed by another run.`);
+      continue;
+    }
     try {
       await sendTaskReminderEmail(task.email, task);
-      await db.run('UPDATE tasks SET reminder_sent = true WHERE id = ?', [task.id]);
       sent++;
       console.log(`[reminder-job] ✓ Sent and marked — task id=${task.id} "${task.name}" → ${task.email}`);
     } catch (err) {
+      await db.run('UPDATE tasks SET reminder_sent = false WHERE id = ?', [task.id]);
       console.error(`[reminder-job] ✗ Failed — task id=${task.id} "${task.name}": ${describeError(err)}`);
     }
   }
@@ -93,12 +112,22 @@ function startReminderJob() {
     return;
   }
 
+  if (process.env.ENABLE_LOCAL_CRON !== 'true') {
+    // Off by default: every local backend points at the SAME shared database
+    // (there's no per-developer dev database), so a laptop's own cron would
+    // otherwise send real reminder emails to real users just by being left
+    // running — this is exactly what caused the duplicate-send bug this fix
+    // addresses. Opt in explicitly in .env to actually exercise this locally.
+    console.log('[reminder-job] Local dev — in-process cron disabled (set ENABLE_LOCAL_CRON=true in .env to enable). Call POST /api/jobs/reminders directly to test.');
+    return;
+  }
+
   // Runs every hour on the hour — catches missed runs within 1 hour of server restart
   cron.schedule('0 * * * *', () => {
     sendReminders().catch(err => console.error('[reminder-job] Unexpected error:', describeError(err)));
   });
 
-  console.log('[reminder-job] Scheduled: hourly (local dev). Window covers today + tomorrow (reminder_sent=false only).');
+  console.log('[reminder-job] Scheduled: hourly (local dev, ENABLE_LOCAL_CRON=true). Window covers today + tomorrow (reminder_sent=false only).');
 }
 
 module.exports = { startReminderJob, sendReminders };
