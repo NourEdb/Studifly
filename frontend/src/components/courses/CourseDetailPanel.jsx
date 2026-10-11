@@ -35,6 +35,7 @@ export default function CourseDetailPanel({ courseId, courseName }) {
     try {
       const result = await getCourseInsight({
         course_name: courseName,
+        course_id: courseId,
         stats: data.stats,
         task_names: data.tasks.map(t => t.name),
       });
