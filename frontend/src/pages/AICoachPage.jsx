@@ -66,11 +66,13 @@ export default function AICoachPage() {
     try {
       const { reply } = await sendChatMessage(trimmed);
       setMessages(m => [...m, { role: 'assistant', content: reply }]);
-    } catch {
-      setMessages(m => [...m, {
-        role: 'assistant',
-        content: "Sorry, I couldn't reach the AI server right now. Please check that GROQ_API_KEY is configured and try again.",
-      }]);
+    } catch (err) {
+      // The backend already distinguishes a missing API key from a transient
+      // failure (see ai-coach.service.js's createChatCompletion) — show that
+      // message instead of unconditionally blaming the API key for every
+      // failure, which was misleading for ordinary rate-limit/timeout errors.
+      const content = err.response?.data?.error || "Sorry, I couldn't reach the AI coach right now. Please try again.";
+      setMessages(m => [...m, { role: 'assistant', content }]);
     } finally {
       setLoading(false);
     }
