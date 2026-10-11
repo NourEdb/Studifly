@@ -55,6 +55,14 @@ function fmtDate(dateStr) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric', timeZone: 'UTC' });
 }
 
+// "9am"/"2pm" label for an hour-of-day (0-23) — used only for the AI Coach
+// page's "Peak hours" stat card (bestHours below), not shown to the model.
+function fmtHour(h) {
+  if (h === 0)  return '12am';
+  if (h === 12) return '12pm';
+  return h < 12 ? `${h}am` : `${h - 12}pm`;
+}
+
 // Mirrors frontend/src/utils/formatWeek.js's math (Sunday-start, UTC) for a
 // readable "Oct 4–10" label from a backend week string like "2026-W41".
 function fmtWeekLabel(weekStr) {
@@ -145,6 +153,10 @@ async function getStudyContext(userId) {
     streakDays,
     myGroups,
     prediction,
+    bestHoursRows,
+    mostStudiedRow,
+    sessionStatsRow,
+    taskStatusRows,
   ] = await Promise.all([
     db.get(`SELECT weekly_goal_hours FROM users WHERE id = ?`, [userId]),
 
@@ -222,6 +234,39 @@ async function getStudyContext(userId) {
     listMyGroups(userId),
 
     getTaskPredictions(userId),
+
+    // Feeds the AI Coach page's 4 stat cards (Peak hours, Most studied, Avg
+    // session, Completion rate) — all-time, not part of the chat prompt
+    // itself. These were dropped when the context was redesigned around
+    // sections (a)-(g); restored here as plain extra fields on the returned
+    // object so the cards work again without reintroducing them into
+    // buildSystemPrompt() or touching any of the new sections above.
+    db.all(
+      `SELECT EXTRACT(HOUR FROM start_time AT TIME ZONE 'UTC')::int AS hour,
+              SUM(duration)::int AS total_seconds
+       FROM study_sessions WHERE user_id = ? AND duration IS NOT NULL
+       GROUP BY hour ORDER BY total_seconds DESC LIMIT 3`,
+      [userId]
+    ),
+    db.get(
+      `SELECT c.name, SUM(s.duration)::int AS total_seconds
+       FROM study_sessions s
+       JOIN tasks t ON s.task_id = t.id
+       JOIN courses c ON t.course_id = c.id
+       WHERE s.user_id = ? AND s.duration IS NOT NULL
+       GROUP BY c.id, c.name ORDER BY total_seconds DESC LIMIT 1`,
+      [userId]
+    ),
+    db.get(
+      `SELECT COALESCE(AVG(duration), 0)::int AS avg_seconds,
+              COUNT(*)::int                    AS total_sessions
+       FROM study_sessions WHERE user_id = ? AND duration IS NOT NULL`,
+      [userId]
+    ),
+    db.all(
+      `SELECT status, COUNT(*)::int AS count FROM tasks WHERE user_id = ? GROUP BY status`,
+      [userId]
+    ),
   ]);
 
   // --- (b) merge per-course sessions + tasks ---
@@ -290,6 +335,12 @@ async function getStudyContext(userId) {
     })
   );
 
+  // All-time stats for the AI Coach page's 4 stat cards (see comment on their
+  // queries above) — not referenced by buildSystemPrompt().
+  const taskStatusCounts = { pending: 0, in_progress: 0, completed: 0 };
+  taskStatusRows.forEach(r => { taskStatusCounts[r.status] = r.count; });
+  const totalTasksAllTime = taskStatusCounts.pending + taskStatusCounts.in_progress + taskStatusCounts.completed;
+
   return {
     todayLabel:        ilTodayLabel(),
     weeklyGoalHours:    userRow?.weekly_goal_hours || 10,
@@ -310,6 +361,15 @@ async function getStudyContext(userId) {
     lockedBadges:      profile.badges.filter(b => !b.earned).map(b => ({ name: b.name, description: b.description })),
     streakDays,
     groups,
+    // --- AI Coach page stat cards (all-time) ---
+    bestHours:          bestHoursRows.map(r => fmtHour(r.hour)),
+    mostStudiedCourse:  mostStudiedRow?.name || null,
+    mostStudiedSeconds: mostStudiedRow?.total_seconds || 0,
+    avgSessionMinutes:  Math.round((sessionStatsRow.avg_seconds || 0) / 60),
+    totalSessions:      sessionStatsRow.total_sessions,
+    completionRate:     totalTasksAllTime > 0 ? Math.round((taskStatusCounts.completed / totalTasksAllTime) * 100) : 0,
+    totalTasks:         totalTasksAllTime,
+    completedTasks:     taskStatusCounts.completed,
   };
 }
 
