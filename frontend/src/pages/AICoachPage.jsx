@@ -11,7 +11,11 @@ const SUGGESTIONS = [
 
 function fmtHours(h) {
   if (!h) return '—';
-  return h >= 1 ? `${h}h` : `${Math.round(h * 60)}m`;
+  // Round to at most 2 decimals — h is a raw seconds/3600 division, so it's
+  // very rarely a whole number (e.g. 7.999722222222222h instead of 8h).
+  // A JS number drops trailing zeros when interpolated, so 8.00 -> "8" and
+  // 6.75 stays "6.75" with no extra trimming needed.
+  return h >= 1 ? `${Math.round(h * 100) / 100}h` : `${Math.round(h * 60)}m`;
 }
 
 function InsightCard({ icon, label, value, sub }) {
