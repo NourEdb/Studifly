@@ -191,33 +191,60 @@ async function getCourseComparison(userId) {
   );
 }
 
-// Returns per-day planned vs actual minutes for the current ISO week.
-// planned = block duration in minutes; actual = completion_pct * planned / 100.
-// Only days with at least one block are included.
+// Returns per-day planned vs actual minutes for the current ISO (Sun-Sat)
+// week. Only days with at least one contributing row (a block or a
+// qualifying task — see below) are included; a day with nothing planned
+// stays absent, same as before.
+//
+// Two sources, unioned:
+//  1. Scheduled study blocks: planned = its clock-time range, actual =
+//     that range * completion_pct (unchanged from before).
+//  2. Tasks due this week that were never split into any study block: planned
+//     = the task's own planned_time, actual = real logged session time on
+//     that task (study_block_id IS NULL, so a block's own sessions aren't
+//     double-counted here). Without this branch, a task studied and marked
+//     done the same day it was due never appeared on this chart at all —
+//     the query only ever looked at study_blocks, and plain tasks (the
+//     common case: create a task, log time against it, no subtask involved)
+//     don't have a row there. The NOT EXISTS guard skips any task that DOES
+//     have blocks, since that task's planned/actual is already carried by
+//     its blocks' own plan_dates instead.
 async function getBlocksComparison(userId) {
   const { start, end } = getISOWeekBounds(currentISOWeek());
   const weekStart = start.slice(0, 10);
   const weekEnd   = end.slice(0, 10);
 
   return db.all(
-    `SELECT
-       plan_date AS date,
-       ROUND(SUM(
-         EXTRACT(EPOCH FROM (end_time::time - start_time::time)) / 60.0
-       ))::int AS planned_minutes,
-       ROUND(SUM(
+    `SELECT date, ROUND(SUM(planned_minutes))::int AS planned_minutes, ROUND(SUM(actual_minutes))::int AS actual_minutes
+     FROM (
+       SELECT
+         plan_date AS date,
+         EXTRACT(EPOCH FROM (end_time::time - start_time::time)) / 60.0 AS planned_minutes,
          CASE WHEN completion_pct IS NOT NULL
          THEN EXTRACT(EPOCH FROM (end_time::time - start_time::time)) / 60.0
               * completion_pct / 100.0
-         ELSE 0 END
-       ))::int AS actual_minutes
-     FROM study_blocks
-     WHERE user_id = ?
-       AND plan_date >= ?
-       AND plan_date < ?
-     GROUP BY plan_date
-     ORDER BY plan_date ASC`,
-    [userId, weekStart, weekEnd]
+         ELSE 0 END AS actual_minutes
+       FROM study_blocks
+       WHERE user_id = ?
+         AND plan_date >= ?
+         AND plan_date < ?
+
+       UNION ALL
+
+       SELECT
+         t.due_date AS date,
+         t.planned_time AS planned_minutes,
+         COALESCE((SELECT SUM(duration) FROM study_sessions
+                   WHERE task_id = t.id AND study_block_id IS NULL AND duration IS NOT NULL), 0) / 60.0 AS actual_minutes
+       FROM tasks t
+       WHERE t.user_id = ?
+         AND t.due_date >= ?
+         AND t.due_date < ?
+         AND NOT EXISTS (SELECT 1 FROM study_blocks sb WHERE sb.task_id = t.id)
+     ) combined
+     GROUP BY date
+     ORDER BY date ASC`,
+    [userId, weekStart, weekEnd, userId, weekStart, weekEnd]
   );
 }
 

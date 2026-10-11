@@ -59,17 +59,40 @@ async function getCourseDetail(userId, courseId) {
        WHERE t.course_id = ? AND t.user_id = ? AND s.duration IS NOT NULL`,
       [courseId, userId]
     ),
+    // Same fix as dashboard.service.js's getBlocksComparison() (same bug:
+    // this only ever looked at study_blocks, so a plain task — created and
+    // logged directly, no subtask involved, the common case — never showed
+    // up here, including today's). Second branch adds tasks in this course
+    // due this week that were never split into any study block; the
+    // NOT EXISTS guard skips a task that does have blocks, since that
+    // task's planned/actual is already carried by its blocks' own dates.
     db.all(
-      `SELECT sb.plan_date AS date,
-              ROUND(SUM(EXTRACT(EPOCH FROM (sb.end_time::time - sb.start_time::time)) / 60.0))::int AS planned_minutes,
-              ROUND(SUM(CASE WHEN sb.completion_pct IS NOT NULL
-                THEN EXTRACT(EPOCH FROM (sb.end_time::time - sb.start_time::time)) / 60.0 * sb.completion_pct / 100.0
-                ELSE 0 END))::int AS actual_minutes
-       FROM study_blocks sb JOIN tasks t ON sb.task_id = t.id
-       WHERE sb.user_id = ? AND t.course_id = ?
-         AND sb.plan_date >= ? AND sb.plan_date < ?
-       GROUP BY sb.plan_date ORDER BY sb.plan_date ASC`,
-      [userId, courseId, weekStart, weekEnd]
+      `SELECT date, ROUND(SUM(planned_minutes))::int AS planned_minutes, ROUND(SUM(actual_minutes))::int AS actual_minutes
+       FROM (
+         SELECT
+           sb.plan_date AS date,
+           EXTRACT(EPOCH FROM (sb.end_time::time - sb.start_time::time)) / 60.0 AS planned_minutes,
+           CASE WHEN sb.completion_pct IS NOT NULL
+             THEN EXTRACT(EPOCH FROM (sb.end_time::time - sb.start_time::time)) / 60.0 * sb.completion_pct / 100.0
+             ELSE 0 END AS actual_minutes
+         FROM study_blocks sb JOIN tasks t ON sb.task_id = t.id
+         WHERE sb.user_id = ? AND t.course_id = ?
+           AND sb.plan_date >= ? AND sb.plan_date < ?
+
+         UNION ALL
+
+         SELECT
+           t.due_date AS date,
+           t.planned_time AS planned_minutes,
+           COALESCE((SELECT SUM(duration) FROM study_sessions
+                     WHERE task_id = t.id AND study_block_id IS NULL AND duration IS NOT NULL), 0) / 60.0 AS actual_minutes
+         FROM tasks t
+         WHERE t.user_id = ? AND t.course_id = ?
+           AND t.due_date >= ? AND t.due_date < ?
+           AND NOT EXISTS (SELECT 1 FROM study_blocks sb WHERE sb.task_id = t.id)
+       ) combined
+       GROUP BY date ORDER BY date ASC`,
+      [userId, courseId, weekStart, weekEnd, userId, courseId, weekStart, weekEnd]
     ),
   ]);
 
