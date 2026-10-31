@@ -242,7 +242,9 @@ async function sendWeeklyReviewToAll() {
      FROM users u
      JOIN study_sessions s ON s.user_id = u.id
      WHERE s.start_time >= ? AND s.start_time < ? AND s.duration IS NOT NULL
-       AND u.email_reminders_enabled = true`,
+       AND u.email_reminders_enabled = true
+       -- Fake peers from scripts/seedDemo.js — their addresses don't exist.
+       AND u.email NOT LIKE '%@demo.studifly'`,
     [start, end]
   );
 
