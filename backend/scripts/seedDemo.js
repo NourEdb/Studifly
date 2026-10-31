@@ -11,7 +11,8 @@
  *   npm run seed:demo -- --streak-days=10
  *
  * What it creates:
- *   - 18 fake students `demo_peer_01..18`, email `...@demo.studifly` (the marker),
+ *   - 18 fake students with realistic usernames (maya_levi, noa.cohen, ...) and
+ *     email `demo_peer_01..18@demo.studifly` (the marker — peers are keyed on it),
  *     each with 2 courses, 5–10 tasks (varied completion) and study sessions for
  *     the current week + the previous 4 weeks.
  *   - Friendships between `studifly_demo` and a few peers (5 accepted, 1 pending).
@@ -48,31 +49,34 @@ const DRY_RUN     = args.includes('--dry-run');
 const streakArg   = args.find(a => a.startsWith('--streak-days='));
 const STREAK_DAYS = streakArg ? Math.max(1, parseInt(streakArg.split('=')[1], 10) || 7) : 7;
 
-// display name, weekly study hours baseline, task completion rate.
-// Rates are low-ish on purpose: real users (~61% avg) are in the peer average
-// too, and this pulls the overall to ~40% so studifly_demo (47%) shows above it.
+// username, display name, weekly study hours baseline, task completion rate.
+// Peers are identified by their email (demo_peer_NN@demo.studifly, by position
+// in this list), never by username — usernames can be renamed freely, as long
+// as they stay unique. Rates are low-ish on purpose: real users (~61% avg) are
+// in the peer average too, and this pulls the overall to ~40% so studifly_demo
+// (47%) shows above it.
 const PEERS = [
-  ['Maya Levi',        9.5, 0.50],
-  ['Omar Haddad',      4.0, 0.15],
-  ['Noa Cohen',       11.0, 0.60],
-  ['Yousef Khalil',    2.5, 0.10],
-  ['Daniel Mizrahi',   6.5, 0.25],
-  ['Lina Nassar',      8.0, 0.40],
-  ['Itai Peretz',      3.0, 0.10],
-  ['Rana Saleh',       7.0, 0.30],
-  ['Tamar Friedman',   5.5, 0.20],
-  ['Ahmad Jaber',      1.5, 0.10],
-  ['Shira Ben-David', 10.0, 0.45],
-  ['Karim Awad',       5.0, 0.15],
-  ['Yael Shapiro',     6.0, 0.25],
-  ['Hiba Mansour',     8.5, 0.35],
-  ['Eitan Rosen',      3.5, 0.10],
-  ['Dana Azoulay',     7.5, 0.20],
-  ['Sami Odeh',        2.0, 0.10],
-  ['Lior Katz',       12.0, 0.55],
-].map(([display_name, baseHours, completionRate], i) => ({
-  username: `demo_peer_${String(i + 1).padStart(2, '0')}`,
-  email:    `demo_peer_${String(i + 1).padStart(2, '0')}${MARKER_DOMAIN}`,
+  ['maya_levi',      'Maya Levi',        9.5, 0.50],
+  ['omar_haddad',    'Omar Haddad',      4.0, 0.15],
+  ['noa.cohen',      'Noa Cohen',       11.0, 0.60],
+  ['yousef.k',       'Yousef Khalil',    2.5, 0.10],
+  ['danielmizrahi',  'Daniel Mizrahi',   6.5, 0.25],
+  ['lina_nassar',    'Lina Nassar',      8.0, 0.40],
+  ['itai.peretz',    'Itai Peretz',      3.0, 0.10],
+  ['rana_s',         'Rana Saleh',       7.0, 0.30],
+  ['tamar.friedman', 'Tamar Friedman',   5.5, 0.20],
+  ['ahmad_jaber',    'Ahmad Jaber',      1.5, 0.10],
+  ['shira_bd',       'Shira Ben-David', 10.0, 0.45],
+  ['karim.awad',     'Karim Awad',       5.0, 0.15],
+  ['yaelshapiro',    'Yael Shapiro',     6.0, 0.25],
+  ['hiba.mansour',   'Hiba Mansour',     8.5, 0.35],
+  ['eitan_rosen',    'Eitan Rosen',      3.5, 0.10],
+  ['dana.azoulay',   'Dana Azoulay',     7.5, 0.20],
+  ['sami_odeh',      'Sami Odeh',        2.0, 0.10],
+  ['lior.katz',      'Lior Katz',       12.0, 0.55],
+].map(([username, display_name, baseHours, completionRate], i) => ({
+  username,
+  email: `demo_peer_${String(i + 1).padStart(2, '0')}${MARKER_DOMAIN}`,
   display_name, baseHours, completionRate,
 }));
 
@@ -211,28 +215,37 @@ async function removeDemoData(c, demoUserId) {
 }
 
 async function upsertPeers(c, passwordHash) {
+  // A peer username must never collide with a real account (case-insensitive,
+  // so "Maya_Levi" can't sit next to "maya_levi" either).
+  const { rows: clashes } = await c.query(
+    `SELECT username FROM users WHERE email NOT LIKE $1 AND lower(username) = ANY($2)`,
+    [`%${MARKER_DOMAIN}`, PEERS.map(p => p.username.toLowerCase())]
+  );
+  if (clashes.length) {
+    throw new Error(`Username(s) already used by real accounts: ${clashes.map(r => r.username).join(', ')} — aborting, nothing changed.`);
+  }
+
   // Drop marker users that are no longer in the list (e.g. PEERS was shortened).
   await c.query(
-    `DELETE FROM users WHERE email LIKE $1 AND NOT (username = ANY($2))`,
-    [`%${MARKER_DOMAIN}`, PEERS.map(p => p.username)]
+    `DELETE FROM users WHERE email LIKE $1 AND NOT (email = ANY($2))`,
+    [`%${MARKER_DOMAIN}`, PEERS.map(p => p.email)]
   );
 
+  // Keyed on the marker email, so a renamed username updates the same row
+  // (same id) instead of creating a second user.
   for (const [i, p] of PEERS.entries()) {
     const { rows } = await c.query(
       `INSERT INTO users (username, email, password_hash, display_name, weekly_goal_hours,
                           email_reminders_enabled, created_at)
        VALUES ($1, $2, $3, $4, $5, false, NOW() - INTERVAL '75 days')
-       ON CONFLICT (username) DO UPDATE
-         SET display_name = EXCLUDED.display_name,
+       ON CONFLICT (email) DO UPDATE
+         SET username = EXCLUDED.username,
+             display_name = EXCLUDED.display_name,
              weekly_goal_hours = EXCLUDED.weekly_goal_hours,
              email_reminders_enabled = false
-         WHERE users.email LIKE $6
        RETURNING id`,
-      [p.username, p.email, passwordHash, p.display_name, 8 + (i % 8), `%${MARKER_DOMAIN}`]
+      [p.username, p.email, passwordHash, p.display_name, 8 + (i % 8)]
     );
-    if (!rows[0]) {
-      throw new Error(`Username ${p.username} already belongs to a non-demo account — aborting, nothing changed.`);
-    }
     p.id = rows[0].id;
   }
 
